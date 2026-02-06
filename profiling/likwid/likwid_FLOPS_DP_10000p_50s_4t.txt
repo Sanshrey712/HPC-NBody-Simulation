@@ -1,0 +1,105 @@
+--------------------------------------------------------------------------------
+CPU name:	AMD Ryzen 9 5900XT 16-Core Processor           
+CPU type:	AMD K19 (Zen3) architecture
+CPU clock:	3.30 GHz
+--------------------------------------------------------------------------------
+
+=== Simulation Configuration ===
+Particles:       10000
+Timesteps:       50
+dt:              0.001
+Domain size:     100
+Algorithm:       Barnes-Hut
+Theta:           0.5
+Softening:       0.01
+Mode:            OpenMP (4 threads)
+================================
+
+
+=== OpenMP Mode (4 threads) ===
+Generating 10000 particles...
+
+=== Simulation Configuration ===
+Particles:       10000
+Timesteps:       50
+dt:              0.001
+Domain size:     100
+Algorithm:       Barnes-Hut
+Theta:           0.5
+Softening:       0.01
+Mode:            OpenMP (4 threads)
+================================
+
+
+=== OpenMP Mode (4 threads) ===
+Generating 10000 particles...
+
+=== Simulation Configuration ===
+Particles:       10000
+Timesteps:       50
+dt:              0.001
+Domain size:     100
+Algorithm:       Barnes-Hut
+Theta:           0.5
+Softening:       0.01
+Mode:            OpenMP (4 threads)
+================================
+
+
+=== OpenMP Mode (4 threads) ===
+Generating 10000 particles...
+
+=== Simulation Configuration ===
+Particles:       10000
+Timesteps:       50
+dt:              0.001
+Domain size:     100
+Algorithm:       Barnes-Hut
+Theta:           0.5
+Softening:       0.01
+Mode:            OpenMP (4 threads)
+================================
+
+
+=== OpenMP Mode (4 threads) ===
+Generating 10000 particles...
+Step 0/50Step 10/50Step 20/50Step 30/50Step 40/50
+
+=== Performance Statistics ===
+Tree build time:    0.000 ms
+Force compute time: 0.000 ms
+Integration time:   0.000 ms
+Total time:         38408.189 ms
+Interactions:       26024174
+==============================
+
+--------------------------------------------------------------------------------
+Region BH_FORCE_OMP, Group 1: FLOPS_DP
++-------------------+------------+
+|    Region Info    | HWThread 0 |
++-------------------+------------+
+| RDTSC Runtime [s] |  38.404510 |
+|     call count    |          1 |
++-------------------+------------+
+
++---------------------------+---------+--------------+
+|           Event           | Counter |  HWThread 0  |
++---------------------------+---------+--------------+
+|      ACTUAL_CPU_CLOCK     |  FIXC1  |  77042070000 |
+|       MAX_CPU_CLOCK       |  FIXC2  | 126745900000 |
+|    RETIRED_INSTRUCTIONS   |   PMC0  |  66370020000 |
+|    CPU_CLOCKS_UNHALTED    |   PMC1  |  75714740000 |
+| RETIRED_SSE_AVX_FLOPS_ALL |   PMC2  |   9285948000 |
+|           MERGE           |   PMC3  |            0 |
++---------------------------+---------+--------------+
+
++----------------------+------------+
+|        Metric        | HWThread 0 |
++----------------------+------------+
+|  Runtime (RDTSC) [s] |    38.4045 |
+| Runtime unhalted [s] |    23.3461 |
+|      Clock [MHz]     |  2005.8908 |
+|          CPI         |     1.1408 |
+|     DP [MFLOP/s]     |   241.7932 |
++----------------------+------------+
+

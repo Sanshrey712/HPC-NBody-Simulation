@@ -66,12 +66,30 @@ endif()
 
 # LIKWID performance counters
 if(ENABLE_LIKWID)
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(LIKWID likwid)
+    find_package(PkgConfig QUIET)
+    if(PKG_CONFIG_FOUND)
+        pkg_check_modules(LIKWID likwid)
+    endif()
+
+    # Fallback if pkg-config didn't find it
+    if(NOT LIKWID_FOUND)
+        find_path(LIKWID_INCLUDE_DIR likwid.h PATHS /usr/include /usr/local/include)
+        find_library(LIKWID_LIBRARY likwid PATHS /usr/lib /usr/lib/x86_64-linux-gnu /usr/local/lib)
+        
+        if(LIKWID_INCLUDE_DIR AND LIKWID_LIBRARY)
+            set(LIKWID_FOUND TRUE)
+            set(LIKWID_INCLUDE_DIRS ${LIKWID_INCLUDE_DIR})
+            set(LIKWID_LIBRARIES ${LIKWID_LIBRARY})
+        endif()
+    endif()
+
     if(LIKWID_FOUND)
         add_definitions(-DLIKWID_PERFMON)
         include_directories(${LIKWID_INCLUDE_DIRS})
-        link_directories(${LIKWID_LIBRARY_DIRS})
+        # Only link directories if we have them from pkg-config
+        if(LIKWID_LIBRARY_DIRS)
+            link_directories(${LIKWID_LIBRARY_DIRS})
+        endif()
         message(STATUS "LIKWID found: ${LIKWID_LIBRARIES}")
     else()
         message(WARNING "LIKWID not found, disabling performance counters")
