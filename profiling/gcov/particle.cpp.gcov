@@ -1,0 +1,79 @@
+        -:    0:Source:/home/sunny/Desktop/HPC_Project/src/common/particle.cpp
+        -:    0:Graph:./CMakeFiles/nbody_gcov.dir/src/common/particle.cpp.gcno
+        -:    0:Data:./CMakeFiles/nbody_gcov.dir/src/common/particle.cpp.gcda
+        -:    0:Runs:4
+        -:    1:#include "particle.h"
+        -:    2:#include <cstdlib>
+        -:    3:
+    #####:    4:void ParticleSOA::allocate(int n) {
+    #####:    5:  count = n;
+    #####:    6:  pos_x = new double[n];
+    #####:    7:  pos_y = new double[n];
+    #####:    8:  pos_z = new double[n];
+    #####:    9:  vel_x = new double[n];
+    #####:   10:  vel_y = new double[n];
+    #####:   11:  vel_z = new double[n];
+    #####:   12:  acc_x = new double[n];
+    #####:   13:  acc_y = new double[n];
+    #####:   14:  acc_z = new double[n];
+    #####:   15:  mass = new double[n];
+    #####:   16:  id = new int[n];
+    #####:   17:}
+        -:   18:
+    #####:   19:void ParticleSOA::deallocate() {
+    #####:   20:  delete[] pos_x;
+    #####:   21:  delete[] pos_y;
+    #####:   22:  delete[] pos_z;
+    #####:   23:  delete[] vel_x;
+    #####:   24:  delete[] vel_y;
+    #####:   25:  delete[] vel_z;
+    #####:   26:  delete[] acc_x;
+    #####:   27:  delete[] acc_y;
+    #####:   28:  delete[] acc_z;
+    #####:   29:  delete[] mass;
+    #####:   30:  delete[] id;
+        -:   31:
+    #####:   32:  pos_x = pos_y = pos_z = nullptr;
+    #####:   33:  vel_x = vel_y = vel_z = nullptr;
+    #####:   34:  acc_x = acc_y = acc_z = nullptr;
+    #####:   35:  mass = nullptr;
+    #####:   36:  id = nullptr;
+    #####:   37:  count = 0;
+    #####:   38:}
+        -:   39:
+    #####:   40:void ParticleSOA::from_aos(const Particle *particles, int n) {
+    #####:   41:  if (count != n) {
+    #####:   42:    deallocate();
+    #####:   43:    allocate(n);
+        -:   44:  }
+        -:   45:
+    #####:   46:  for (int i = 0; i < n; ++i) {
+    #####:   47:    pos_x[i] = particles[i].position.x;
+    #####:   48:    pos_y[i] = particles[i].position.y;
+    #####:   49:    pos_z[i] = particles[i].position.z;
+    #####:   50:    vel_x[i] = particles[i].velocity.x;
+    #####:   51:    vel_y[i] = particles[i].velocity.y;
+    #####:   52:    vel_z[i] = particles[i].velocity.z;
+    #####:   53:    acc_x[i] = particles[i].acceleration.x;
+    #####:   54:    acc_y[i] = particles[i].acceleration.y;
+    #####:   55:    acc_z[i] = particles[i].acceleration.z;
+    #####:   56:    mass[i] = particles[i].mass;
+    #####:   57:    id[i] = particles[i].id;
+        -:   58:  }
+    #####:   59:}
+        -:   60:
+    #####:   61:void ParticleSOA::to_aos(Particle *particles) const {
+    #####:   62:  for (int i = 0; i < count; ++i) {
+    #####:   63:    particles[i].position.x = pos_x[i];
+    #####:   64:    particles[i].position.y = pos_y[i];
+    #####:   65:    particles[i].position.z = pos_z[i];
+    #####:   66:    particles[i].velocity.x = vel_x[i];
+    #####:   67:    particles[i].velocity.y = vel_y[i];
+    #####:   68:    particles[i].velocity.z = vel_z[i];
+    #####:   69:    particles[i].acceleration.x = acc_x[i];
+    #####:   70:    particles[i].acceleration.y = acc_y[i];
+    #####:   71:    particles[i].acceleration.z = acc_z[i];
+    #####:   72:    particles[i].mass = mass[i];
+    #####:   73:    particles[i].id = id[i];
+        -:   74:  }
+    #####:   75:}

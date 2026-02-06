@@ -1,0 +1,67 @@
+        -:    0:Source:/home/sunny/Desktop/HPC_Project/src/openmp/barnes_hut_omp.h
+        -:    0:Graph:./CMakeFiles/nbody_gcov.dir/src/main.cpp.gcno
+        -:    0:Data:./CMakeFiles/nbody_gcov.dir/src/main.cpp.gcda
+        -:    0:Runs:4
+        -:    1:#ifndef BARNES_HUT_OMP_H
+        -:    2:#define BARNES_HUT_OMP_H
+        -:    3:
+        -:    4:#include "../common/config.h"
+        -:    5:#include "../common/particle.h"
+        -:    6:#include "../serial/octree.h"
+        -:    7:#include <vector>
+        -:    8:
+        -:    9:// OpenMP-parallel Barnes-Hut O(N log N) N-Body solver
+        -:   10:class BarnesHutOMP {
+        -:   11:public:
+        -:   12:  BarnesHutOMP(double G = Constants::G_NORMALIZED,
+        -:   13:               double theta = BarnesHut::THETA,
+        -:   14:               double softening = Constants::SOFTENING);
+        -:   15:
+        -:   16:  // Build octree (serial - tree construction is harder to parallelize)
+        -:   17:  void build_tree(const std::vector<Particle> &particles);
+        -:   18:
+        -:   19:  // Compute forces using Barnes-Hut with OpenMP
+        -:   20:  void compute_forces(std::vector<Particle> &particles);
+        -:   21:
+        -:   22:  // Single timestep using Leapfrog integration (parallel)
+        -:   23:  void integrate(std::vector<Particle> &particles, double dt);
+        -:   24:
+        -:   25:  // Full simulation step
+        -:   26:  void step(std::vector<Particle> &particles, double dt);
+        -:   27:
+        -:   28:  // Compute total energy
+        -:   29:  double compute_total_energy(std::vector<Particle> &particles);
+        -:   30:
+        -:   31:  // Compute kinetic energy (parallel)
+        -:   32:  double compute_kinetic_energy(const std::vector<Particle> &particles) const;
+        -:   33:
+        -:   34:  // Get statistics
+        -:   35:  int get_node_count() const { return tree_.get_node_count(); }
+        -:   36:  int get_max_depth() const { return tree_.get_max_depth(); }
+        1:   37:  long long get_interaction_count() const { return interaction_count_; }
+        -:   38:
+        -:   39:  // Set parameters
+        -:   40:  void set_theta(double theta) {
+        -:   41:    theta_ = theta;
+        -:   42:    theta_sq_ = theta * theta;
+        -:   43:  }
+        -:   44:  void set_num_threads(int n);
+        -:   45:  int get_num_threads() const { return num_threads_; }
+        -:   46:
+        -:   47:private:
+        -:   48:  double G_;
+        -:   49:  double theta_;
+        -:   50:  double theta_sq_;
+        -:   51:  double softening_;
+        -:   52:  double softening_sq_;
+        -:   53:  Octree tree_;
+        -:   54:  long long interaction_count_;
+        -:   55:  int num_threads_;
+        -:   56:
+        -:   57:  // Recursive force computation (called per particle, thread-safe for reading
+        -:   58:  // tree)
+        -:   59:  void compute_force_on_particle(Particle &particle, const OctreeNode *node,
+        -:   60:                                 long long &local_count);
+        -:   61:};
+        -:   62:
+        -:   63:#endif // BARNES_HUT_OMP_H

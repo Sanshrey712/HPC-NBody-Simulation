@@ -1,0 +1,139 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - src/openmp/barnes_hut_omp.h</title>
+  <link rel="stylesheet" type="text/css" href="../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../index.html">top level</a> - <a href="index.html">src/openmp</a> - barnes_hut_omp.h<span style="font-size: 80%;"> (source / <a href="barnes_hut_omp.h.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntry">1</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-02-06 13:44:03</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntry">1</td>
+          </tr>
+                  <tr><td><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : #ifndef BARNES_HUT_OMP_H</span>
+<span id="L2"><span class="lineNum">       2</span>              : #define BARNES_HUT_OMP_H</span>
+<span id="L3"><span class="lineNum">       3</span>              : </span>
+<span id="L4"><span class="lineNum">       4</span>              : #include &quot;../common/config.h&quot;</span>
+<span id="L5"><span class="lineNum">       5</span>              : #include &quot;../common/particle.h&quot;</span>
+<span id="L6"><span class="lineNum">       6</span>              : #include &quot;../serial/octree.h&quot;</span>
+<span id="L7"><span class="lineNum">       7</span>              : #include &lt;vector&gt;</span>
+<span id="L8"><span class="lineNum">       8</span>              : </span>
+<span id="L9"><span class="lineNum">       9</span>              : // OpenMP-parallel Barnes-Hut O(N log N) N-Body solver</span>
+<span id="L10"><span class="lineNum">      10</span>              : class BarnesHutOMP {</span>
+<span id="L11"><span class="lineNum">      11</span>              : public:</span>
+<span id="L12"><span class="lineNum">      12</span>              :   BarnesHutOMP(double G = Constants::G_NORMALIZED,</span>
+<span id="L13"><span class="lineNum">      13</span>              :                double theta = BarnesHut::THETA,</span>
+<span id="L14"><span class="lineNum">      14</span>              :                double softening = Constants::SOFTENING);</span>
+<span id="L15"><span class="lineNum">      15</span>              : </span>
+<span id="L16"><span class="lineNum">      16</span>              :   // Build octree (serial - tree construction is harder to parallelize)</span>
+<span id="L17"><span class="lineNum">      17</span>              :   void build_tree(const std::vector&lt;Particle&gt; &amp;particles);</span>
+<span id="L18"><span class="lineNum">      18</span>              : </span>
+<span id="L19"><span class="lineNum">      19</span>              :   // Compute forces using Barnes-Hut with OpenMP</span>
+<span id="L20"><span class="lineNum">      20</span>              :   void compute_forces(std::vector&lt;Particle&gt; &amp;particles);</span>
+<span id="L21"><span class="lineNum">      21</span>              : </span>
+<span id="L22"><span class="lineNum">      22</span>              :   // Single timestep using Leapfrog integration (parallel)</span>
+<span id="L23"><span class="lineNum">      23</span>              :   void integrate(std::vector&lt;Particle&gt; &amp;particles, double dt);</span>
+<span id="L24"><span class="lineNum">      24</span>              : </span>
+<span id="L25"><span class="lineNum">      25</span>              :   // Full simulation step</span>
+<span id="L26"><span class="lineNum">      26</span>              :   void step(std::vector&lt;Particle&gt; &amp;particles, double dt);</span>
+<span id="L27"><span class="lineNum">      27</span>              : </span>
+<span id="L28"><span class="lineNum">      28</span>              :   // Compute total energy</span>
+<span id="L29"><span class="lineNum">      29</span>              :   double compute_total_energy(std::vector&lt;Particle&gt; &amp;particles);</span>
+<span id="L30"><span class="lineNum">      30</span>              : </span>
+<span id="L31"><span class="lineNum">      31</span>              :   // Compute kinetic energy (parallel)</span>
+<span id="L32"><span class="lineNum">      32</span>              :   double compute_kinetic_energy(const std::vector&lt;Particle&gt; &amp;particles) const;</span>
+<span id="L33"><span class="lineNum">      33</span>              : </span>
+<span id="L34"><span class="lineNum">      34</span>              :   // Get statistics</span>
+<span id="L35"><span class="lineNum">      35</span>              :   int get_node_count() const { return tree_.get_node_count(); }</span>
+<span id="L36"><span class="lineNum">      36</span>              :   int get_max_depth() const { return tree_.get_max_depth(); }</span>
+<span id="L37"><span class="lineNum">      37</span> <span class="tlaGNC tlaBgGNC">           1 :   long long get_interaction_count() const { return interaction_count_; }</span></span>
+<span id="L38"><span class="lineNum">      38</span>              : </span>
+<span id="L39"><span class="lineNum">      39</span>              :   // Set parameters</span>
+<span id="L40"><span class="lineNum">      40</span>              :   void set_theta(double theta) {</span>
+<span id="L41"><span class="lineNum">      41</span>              :     theta_ = theta;</span>
+<span id="L42"><span class="lineNum">      42</span>              :     theta_sq_ = theta * theta;</span>
+<span id="L43"><span class="lineNum">      43</span>              :   }</span>
+<span id="L44"><span class="lineNum">      44</span>              :   void set_num_threads(int n);</span>
+<span id="L45"><span class="lineNum">      45</span>              :   int get_num_threads() const { return num_threads_; }</span>
+<span id="L46"><span class="lineNum">      46</span>              : </span>
+<span id="L47"><span class="lineNum">      47</span>              : private:</span>
+<span id="L48"><span class="lineNum">      48</span>              :   double G_;</span>
+<span id="L49"><span class="lineNum">      49</span>              :   double theta_;</span>
+<span id="L50"><span class="lineNum">      50</span>              :   double theta_sq_;</span>
+<span id="L51"><span class="lineNum">      51</span>              :   double softening_;</span>
+<span id="L52"><span class="lineNum">      52</span>              :   double softening_sq_;</span>
+<span id="L53"><span class="lineNum">      53</span>              :   Octree tree_;</span>
+<span id="L54"><span class="lineNum">      54</span>              :   long long interaction_count_;</span>
+<span id="L55"><span class="lineNum">      55</span>              :   int num_threads_;</span>
+<span id="L56"><span class="lineNum">      56</span>              : </span>
+<span id="L57"><span class="lineNum">      57</span>              :   // Recursive force computation (called per particle, thread-safe for reading</span>
+<span id="L58"><span class="lineNum">      58</span>              :   // tree)</span>
+<span id="L59"><span class="lineNum">      59</span>              :   void compute_force_on_particle(Particle &amp;particle, const OctreeNode *node,</span>
+<span id="L60"><span class="lineNum">      60</span>              :                                  long long &amp;local_count);</span>
+<span id="L61"><span class="lineNum">      61</span>              : };</span>
+<span id="L62"><span class="lineNum">      62</span>              : </span>
+<span id="L63"><span class="lineNum">      63</span>              : #endif // BARNES_HUT_OMP_H</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

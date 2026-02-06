@@ -1,0 +1,129 @@
+        -:    0:Source:/home/sunny/Desktop/HPC_Project/src/serial/direct_nbody.cpp
+        -:    0:Graph:./CMakeFiles/nbody_gcov.dir/src/serial/direct_nbody.cpp.gcno
+        -:    0:Data:./CMakeFiles/nbody_gcov.dir/src/serial/direct_nbody.cpp.gcda
+        -:    0:Runs:4
+        -:    1:#include "direct_nbody.h"
+        -:    2:#include <cmath>
+        -:    3:
+        1:    4:DirectNBody::DirectNBody(double G, double softening)
+        1:    5:    : G_(G), softening_(softening), softening_sq_(softening * softening),
+        1:    6:      interaction_count_(0) {}
+        -:    7:
+       11:    8:void DirectNBody::compute_forces(std::vector<Particle> &particles) {
+       11:    9:  int n = particles.size();
+       11:   10:  interaction_count_ = 0;
+        -:   11:
+        -:   12:  // Reset accelerations
+    11011:   13:  for (int i = 0; i < n; ++i) {
+    11000:   14:    particles[i].reset_acceleration();
+        -:   15:  }
+        -:   16:
+        -:   17:  // Compute pairwise forces (use Newton's third law for efficiency)
+    11011:   18:  for (int i = 0; i < n; ++i) {
+  5505500:   19:    for (int j = i + 1; j < n; ++j) {
+        -:   20:      // Distance vector from i to j
+  5494500:   21:      Vector3D r = particles[j].position - particles[i].position;
+  5494500:   22:      double dist_sq = r.magnitude_sq() + softening_sq_;
+  5494500:   23:      double dist = sqrt(dist_sq);
+  5494500:   24:      double dist_cubed = dist_sq * dist;
+        -:   25:
+        -:   26:      // Force magnitude: G * m_i * m_j / r²
+        -:   27:      // Acceleration on i: G * m_j / r² in direction of r
+  5494500:   28:      double force_factor = G_ / dist_cubed;
+        -:   29:
+  5494500:   30:      Vector3D acc_i = r * (force_factor * particles[j].mass);
+  5494500:   31:      Vector3D acc_j = r * (force_factor * particles[i].mass);
+        -:   32:
+  5494500:   33:      particles[i].acceleration += acc_i;
+  5494500:   34:      particles[j].acceleration -= acc_j; // Newton's third law
+        -:   35:
+  5494500:   36:      interaction_count_++;
+        -:   37:    }
+        -:   38:  }
+       11:   39:}
+        -:   40:
+       10:   41:void DirectNBody::integrate(std::vector<Particle> &particles, double dt) {
+        -:   42:  // Leapfrog integration (Kick-Drift-Kick variant)
+        -:   43:  // This is symplectic and preserves energy well
+        -:   44:
+       10:   45:  double half_dt = 0.5 * dt;
+        -:   46:
+    10010:   47:  for (auto &p : particles) {
+        -:   48:    // Kick: update velocity by half step
+    10000:   49:    p.velocity += p.acceleration * half_dt;
+        -:   50:
+        -:   51:    // Drift: update position by full step
+    10000:   52:    p.position += p.velocity * dt;
+        -:   53:  }
+        -:   54:
+        -:   55:  // Compute new forces at updated positions
+       10:   56:  compute_forces(particles);
+        -:   57:
+    10010:   58:  for (auto &p : particles) {
+        -:   59:    // Kick: update velocity by half step
+    10000:   60:    p.velocity += p.acceleration * half_dt;
+        -:   61:  }
+       10:   62:}
+        -:   63:
+       10:   64:void DirectNBody::step(std::vector<Particle> &particles, double dt) {
+       10:   65:  integrate(particles, dt);
+       10:   66:}
+        -:   67:
+        2:   68:double DirectNBody::compute_kinetic_energy(
+        -:   69:    const std::vector<Particle> &particles) const {
+        2:   70:  double KE = 0.0;
+     2002:   71:  for (const auto &p : particles) {
+     2000:   72:    KE += p.kinetic_energy();
+        -:   73:  }
+        2:   74:  return KE;
+        -:   75:}
+        -:   76:
+        2:   77:double DirectNBody::compute_potential_energy(
+        -:   78:    const std::vector<Particle> &particles) const {
+        2:   79:  double PE = 0.0;
+        2:   80:  int n = particles.size();
+        -:   81:
+     2002:   82:  for (int i = 0; i < n; ++i) {
+  1001000:   83:    for (int j = i + 1; j < n; ++j) {
+   999000:   84:      Vector3D r = particles[j].position - particles[i].position;
+   999000:   85:      double dist = sqrt(r.magnitude_sq() + softening_sq_);
+   999000:   86:      PE -= G_ * particles[i].mass * particles[j].mass / dist;
+        -:   87:    }
+        -:   88:  }
+        -:   89:
+        2:   90:  return PE;
+        -:   91:}
+        -:   92:
+        2:   93:double DirectNBody::compute_total_energy(
+        -:   94:    const std::vector<Particle> &particles) const {
+        2:   95:  return compute_kinetic_energy(particles) +
+        2:   96:         compute_potential_energy(particles);
+        -:   97:}
+        -:   98:
+    #####:   99:Vector3D DirectNBody::compute_center_of_mass(
+        -:  100:    const std::vector<Particle> &particles) const {
+    #####:  101:  Vector3D com;
+    #####:  102:  double total_mass = 0.0;
+        -:  103:
+    #####:  104:  for (const auto &p : particles) {
+    #####:  105:    com += p.position * p.mass;
+    #####:  106:    total_mass += p.mass;
+        -:  107:  }
+        -:  108:
+    #####:  109:  if (total_mass > 0.0) {
+    #####:  110:    com /= total_mass;
+        -:  111:  }
+        -:  112:
+    #####:  113:  return com;
+        -:  114:}
+        -:  115:
+    #####:  116:Vector3D DirectNBody::compute_total_momentum(
+        -:  117:    const std::vector<Particle> &particles) const {
+    #####:  118:  Vector3D momentum;
+        -:  119:
+    #####:  120:  for (const auto &p : particles) {
+    #####:  121:    momentum += p.velocity * p.mass;
+        -:  122:  }
+        -:  123:
+    #####:  124:  return momentum;
+        -:  125:}

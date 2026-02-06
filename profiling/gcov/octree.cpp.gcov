@@ -1,0 +1,249 @@
+        -:    0:Source:/home/sunny/Desktop/HPC_Project/src/serial/octree.cpp
+        -:    0:Graph:./CMakeFiles/nbody_gcov.dir/src/serial/octree.cpp.gcno
+        -:    0:Data:./CMakeFiles/nbody_gcov.dir/src/serial/octree.cpp.gcda
+        -:    0:Runs:4
+        -:    1:#include "octree.h"
+        -:    2:#include <algorithm>
+        -:    3:#include <cmath>
+        -:    4:#include <functional>
+        -:    5:#include <limits>
+        -:    6:
+        -:    7:// BoundingBox implementation
+    89222:    8:BoundingBox::BoundingBox(const Vector3D &min_, const Vector3D &max_)
+    89222:    9:    : min(min_), max(max_) {
+    89222:   10:  center = (min + max) * 0.5;
+    89222:   11:  size = (max - min).magnitude();
+    89222:   12:}
+        -:   13:
+    #####:   14:bool BoundingBox::contains(const Vector3D &point) const {
+    #####:   15:  return point.x >= min.x && point.x <= max.x && point.y >= min.y &&
+    #####:   16:         point.y <= max.y && point.z >= min.z && point.z <= max.z;
+        -:   17:}
+        -:   18:
+   196452:   19:int BoundingBox::get_octant(const Vector3D &point) const {
+   196452:   20:  int octant = 0;
+   196452:   21:  if (point.x >= center.x)
+    81704:   22:    octant |= 1;
+   196452:   23:  if (point.y >= center.y)
+   128208:   24:    octant |= 2;
+   196452:   25:  if (point.z >= center.z)
+   127264:   26:    octant |= 4;
+   196452:   27:  return octant;
+        -:   28:}
+        -:   29:
+    89200:   30:BoundingBox BoundingBox::get_child_box(int octant) const {
+    89200:   31:  Vector3D child_min = min;
+    89200:   32:  Vector3D child_max = center;
+        -:   33:
+    89200:   34:  if (octant & 1) {
+    44600:   35:    child_min.x = center.x;
+    44600:   36:    child_max.x = max.x;
+        -:   37:  }
+    89200:   38:  if (octant & 2) {
+    44600:   39:    child_min.y = center.y;
+    44600:   40:    child_max.y = max.y;
+        -:   41:  }
+    89200:   42:  if (octant & 4) {
+    44600:   43:    child_min.z = center.z;
+    44600:   44:    child_max.z = max.z;
+        -:   45:  }
+        -:   46:
+    89200:   47:  return BoundingBox(child_min, child_max);
+        -:   48:}
+        -:   49:
+        -:   50:// OctreeNode implementation
+    89222:   51:OctreeNode::OctreeNode(const BoundingBox &bounds)
+   267666:   52:    : type_(Type::EMPTY), bounds_(bounds), particle_(nullptr), total_mass_(0.0),
+    89222:   53:      particle_count_(0) {
+   802998:   54:  for (auto &child : children_) {
+   713776:   55:    child = nullptr;
+        -:   56:  }
+    89222:   57:}
+        -:   58:
+    11150:   59:void OctreeNode::subdivide() {
+   100350:   60:  for (int i = 0; i < 8; ++i) {
+    89200:   61:    BoundingBox child_bounds = bounds_.get_child_box(i);
+    89200:   62:    children_[i] = std::make_unique<OctreeNode>(child_bounds);
+        -:   63:  }
+    11150:   64:}
+        -:   65:
+   218452:   66:void OctreeNode::insert(const Particle &particle, int depth) {
+   218452:   67:  if (depth > BarnesHut::MAX_DEPTH) {
+        -:   68:    // Max depth reached, just accumulate mass
+    #####:   69:    if (type_ == Type::EMPTY) {
+    #####:   70:      type_ = Type::LEAF;
+    #####:   71:      particle_ = &particle;
+        -:   72:    }
+    #####:   73:    particle_count_++;
+    #####:   74:    return;
+        -:   75:  }
+        -:   76:
+   218452:   77:  switch (type_) {
+    33150:   78:  case Type::EMPTY:
+        -:   79:    // First particle in this node
+    33150:   80:    type_ = Type::LEAF;
+    33150:   81:    particle_ = &particle;
+    33150:   82:    particle_count_ = 1;
+    33150:   83:    break;
+        -:   84:
+    11150:   85:  case Type::LEAF: {
+        -:   86:    // Need to subdivide
+    11150:   87:    const Particle *existing = particle_;
+    11150:   88:    type_ = Type::INTERNAL;
+    11150:   89:    particle_ = nullptr;
+    11150:   90:    subdivide();
+        -:   91:
+        -:   92:    // Re-insert existing particle
+    11150:   93:    int octant = bounds_.get_octant(existing->position);
+    11150:   94:    children_[octant]->insert(*existing, depth + 1);
+        -:   95:
+        -:   96:    // Insert new particle
+    11150:   97:    octant = bounds_.get_octant(particle.position);
+    11150:   98:    children_[octant]->insert(particle, depth + 1);
+    11150:   99:    particle_count_ = 2;
+    11150:  100:    break;
+        -:  101:  }
+        -:  102:
+   174152:  103:  case Type::INTERNAL: {
+        -:  104:    // Insert into appropriate child
+   174152:  105:    int octant = bounds_.get_octant(particle.position);
+   174152:  106:    children_[octant]->insert(particle, depth + 1);
+   174152:  107:    particle_count_++;
+   174152:  108:    break;
+        -:  109:  }
+        -:  110:  }
+        -:  111:}
+        -:  112:
+    33150:  113:void OctreeNode::compute_mass_distribution() {
+    33150:  114:  switch (type_) {
+    #####:  115:  case Type::EMPTY:
+    #####:  116:    total_mass_ = 0.0;
+    #####:  117:    center_of_mass_ = Vector3D();
+    #####:  118:    break;
+        -:  119:
+    22000:  120:  case Type::LEAF:
+    22000:  121:    total_mass_ = particle_->mass;
+    22000:  122:    center_of_mass_ = particle_->position;
+    22000:  123:    break;
+        -:  124:
+    11150:  125:  case Type::INTERNAL:
+    11150:  126:    total_mass_ = 0.0;
+    11150:  127:    center_of_mass_ = Vector3D();
+        -:  128:
+   100350:  129:    for (auto &child : children_) {
+    89200:  130:      if (child && child->type_ != Type::EMPTY) {
+    33128:  131:        child->compute_mass_distribution();
+    33128:  132:        center_of_mass_ += child->center_of_mass_ * child->total_mass_;
+    33128:  133:        total_mass_ += child->total_mass_;
+        -:  134:      }
+        -:  135:    }
+        -:  136:
+    11150:  137:    if (total_mass_ > 0.0) {
+    11150:  138:      center_of_mass_ /= total_mass_;
+        -:  139:    }
+    11150:  140:    break;
+        -:  141:  }
+    33150:  142:}
+        -:  143:
+  9152506:  144:bool OctreeNode::can_approximate(const Vector3D &point, double theta) const {
+        -:  145:  // Multipole acceptance criterion (MAC)
+        -:  146:  // If s/d < theta, we can approximate this node as a single mass
+        -:  147:  // s = size of node, d = distance from point to center of mass
+        -:  148:
+  9152506:  149:  double d_sq = (point - center_of_mass_).magnitude_sq();
+  9152506:  150:  double s_sq = bounds_.size * bounds_.size;
+        -:  151:
+  9152506:  152:  return s_sq < theta * theta * d_sq;
+        -:  153:}
+        -:  154:
+        -:  155:// Octree implementation
+        2:  156:Octree::Octree(double domain_size) : domain_size_(domain_size) {}
+        -:  157:
+        -:  158:BoundingBox
+       22:  159:Octree::compute_bounding_box(const std::vector<Particle> &particles) const {
+       22:  160:  if (particles.empty()) {
+    #####:  161:    return BoundingBox(Vector3D(),
+    #####:  162:                       Vector3D(domain_size_, domain_size_, domain_size_));
+        -:  163:  }
+        -:  164:
+        -:  165:  Vector3D min_pos(std::numeric_limits<double>::max(),
+        -:  166:                   std::numeric_limits<double>::max(),
+       22:  167:                   std::numeric_limits<double>::max());
+        -:  168:  Vector3D max_pos(std::numeric_limits<double>::lowest(),
+        -:  169:                   std::numeric_limits<double>::lowest(),
+       22:  170:                   std::numeric_limits<double>::lowest());
+        -:  171:
+    22022:  172:  for (const auto &p : particles) {
+    22000:  173:    min_pos.x = std::min(min_pos.x, p.position.x);
+    22000:  174:    min_pos.y = std::min(min_pos.y, p.position.y);
+    22000:  175:    min_pos.z = std::min(min_pos.z, p.position.z);
+    22000:  176:    max_pos.x = std::max(max_pos.x, p.position.x);
+    22000:  177:    max_pos.y = std::max(max_pos.y, p.position.y);
+    22000:  178:    max_pos.z = std::max(max_pos.z, p.position.z);
+        -:  179:  }
+        -:  180:
+        -:  181:  // Make it a cube (octree requires cubic cells)
+    #####:  182:  double size = std::max(
+       22:  183:      {max_pos.x - min_pos.x, max_pos.y - min_pos.y, max_pos.z - min_pos.z});
+       22:  184:  size *= 1.01; // Small margin
+        -:  185:
+       22:  186:  Vector3D center = (min_pos + max_pos) * 0.5;
+       22:  187:  Vector3D half_size(size * 0.5, size * 0.5, size * 0.5);
+        -:  188:
+       22:  189:  return BoundingBox(center - half_size, center + half_size);
+        -:  190:}
+        -:  191:
+       22:  192:void Octree::build(const std::vector<Particle> &particles) {
+       22:  193:  clear();
+        -:  194:
+       22:  195:  BoundingBox bounds = compute_bounding_box(particles);
+       22:  196:  root_ = std::make_unique<OctreeNode>(bounds);
+        -:  197:
+    22022:  198:  for (const auto &p : particles) {
+    22000:  199:    root_->insert(p);
+        -:  200:  }
+        -:  201:
+       22:  202:  root_->compute_mass_distribution();
+       22:  203:}
+        -:  204:
+       22:  205:void Octree::clear() { root_.reset(); }
+        -:  206:
+    #####:  207:int Octree::get_node_count() const {
+    #####:  208:  if (!root_)
+    #####:  209:    return 0;
+        -:  210:
+        -:  211:  std::function<int(const OctreeNode *)> count =
+    #####:  212:      [&](const OctreeNode *node) -> int {
+    #####:  213:    if (!node || node->get_type() == OctreeNode::Type::EMPTY)
+    #####:  214:      return 0;
+        -:  215:
+    #####:  216:    int c = 1;
+    #####:  217:    if (node->get_type() == OctreeNode::Type::INTERNAL) {
+    #####:  218:      for (int i = 0; i < 8; ++i) {
+    #####:  219:        c += count(node->get_child(i));
+        -:  220:      }
+        -:  221:    }
+    #####:  222:    return c;
+    #####:  223:  };
+        -:  224:
+    #####:  225:  return count(root_.get());
+    #####:  226:}
+        -:  227:
+    #####:  228:int Octree::get_max_depth() const {
+    #####:  229:  if (!root_)
+    #####:  230:    return 0;
+        -:  231:
+        -:  232:  std::function<int(const OctreeNode *, int)> depth =
+    #####:  233:      [&](const OctreeNode *node, int d) -> int {
+    #####:  234:    if (!node || node->get_type() != OctreeNode::Type::INTERNAL)
+    #####:  235:      return d;
+        -:  236:
+    #####:  237:    int max_d = d;
+    #####:  238:    for (int i = 0; i < 8; ++i) {
+    #####:  239:      max_d = std::max(max_d, depth(node->get_child(i), d + 1));
+        -:  240:    }
+    #####:  241:    return max_d;
+    #####:  242:  };
+        -:  243:
+    #####:  244:  return depth(root_.get(), 0);
+    #####:  245:}

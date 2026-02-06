@@ -1,0 +1,184 @@
+        -:    0:Source:/home/sunny/Desktop/HPC_Project/src/serial/generators.cpp
+        -:    0:Graph:./CMakeFiles/nbody_gcov.dir/src/serial/generators.cpp.gcno
+        -:    0:Data:./CMakeFiles/nbody_gcov.dir/src/serial/generators.cpp.gcda
+        -:    0:Runs:4
+        -:    1:#include "generators.h"
+        -:    2:#include <cmath>
+        -:    3:#include <random>
+        -:    4:
+    #####:    5:std::vector<Particle> generate_uniform(int n, double domain_size,
+        -:    6:                                       double total_mass, unsigned int seed) {
+    #####:    7:  std::vector<Particle> particles(n);
+    #####:    8:  std::mt19937 rng(seed);
+    #####:    9:  std::uniform_real_distribution<double> pos_dist(0.0, domain_size);
+    #####:   10:  std::uniform_real_distribution<double> vel_dist(-0.1, 0.1);
+        -:   11:
+    #####:   12:  double mass_per_particle = total_mass / n;
+        -:   13:
+    #####:   14:  for (int i = 0; i < n; ++i) {
+    #####:   15:    Vector3D pos(pos_dist(rng), pos_dist(rng), pos_dist(rng));
+    #####:   16:    Vector3D vel(vel_dist(rng), vel_dist(rng), vel_dist(rng));
+    #####:   17:    particles[i] = Particle(pos, vel, mass_per_particle, i);
+        -:   18:  }
+        -:   19:
+    #####:   20:  return particles;
+    =====:   21:}
+        -:   22:
+    #####:   23:std::vector<Particle> generate_gaussian_clusters(int n, int num_clusters,
+        -:   24:                                                 double domain_size,
+        -:   25:                                                 double cluster_std,
+        -:   26:                                                 double total_mass,
+        -:   27:                                                 unsigned int seed) {
+    #####:   28:  std::vector<Particle> particles(n);
+    #####:   29:  std::mt19937 rng(seed);
+        -:   30:  std::uniform_real_distribution<double> center_dist(
+    #####:   31:      cluster_std * 2, domain_size - cluster_std * 2);
+    #####:   32:  std::normal_distribution<double> offset_dist(0.0, cluster_std);
+    #####:   33:  std::uniform_real_distribution<double> vel_dist(-0.05, 0.05);
+        -:   34:
+    #####:   35:  double mass_per_particle = total_mass / n;
+    #####:   36:  int particles_per_cluster = n / num_clusters;
+        -:   37:
+    #####:   38:  std::vector<Vector3D> centers(num_clusters);
+    #####:   39:  for (int c = 0; c < num_clusters; ++c) {
+    #####:   40:    centers[c] = Vector3D(center_dist(rng), center_dist(rng), center_dist(rng));
+        -:   41:  }
+        -:   42:
+    #####:   43:  for (int i = 0; i < n; ++i) {
+    #####:   44:    int cluster = i / particles_per_cluster;
+    #####:   45:    if (cluster >= num_clusters)
+    #####:   46:      cluster = num_clusters - 1;
+        -:   47:
+    #####:   48:    Vector3D offset(offset_dist(rng), offset_dist(rng), offset_dist(rng));
+    #####:   49:    Vector3D pos = centers[cluster] + offset;
+    #####:   50:    Vector3D vel(vel_dist(rng), vel_dist(rng), vel_dist(rng));
+        -:   51:
+    #####:   52:    particles[i] = Particle(pos, vel, mass_per_particle, i);
+        -:   53:  }
+        -:   54:
+    #####:   55:  return particles;
+    #####:   56:}
+        -:   57:
+    #####:   58:std::vector<Particle> generate_galaxy(int n, double radius, double total_mass,
+        -:   59:                                      double arm_count, unsigned int seed) {
+    #####:   60:  std::vector<Particle> particles(n);
+    #####:   61:  std::mt19937 rng(seed);
+    #####:   62:  std::uniform_real_distribution<double> r_dist(0.1, 1.0);
+    #####:   63:  std::uniform_real_distribution<double> theta_dist(0.0, 2.0 * M_PI);
+    #####:   64:  std::normal_distribution<double> z_dist(0.0, radius * 0.05);
+    #####:   65:  std::normal_distribution<double> vel_noise(0.0, 0.01);
+        -:   66:
+    #####:   67:  double mass_per_particle = total_mass / n;
+        -:   68:
+        -:   69:  // Central bulge particles (10%)
+    #####:   70:  int bulge_count = n / 10;
+    #####:   71:  std::normal_distribution<double> bulge_dist(0.0, radius * 0.1);
+        -:   72:
+    #####:   73:  for (int i = 0; i < bulge_count; ++i) {
+    #####:   74:    Vector3D pos(bulge_dist(rng), bulge_dist(rng), bulge_dist(rng) * 0.5);
+    #####:   75:    Vector3D vel(vel_noise(rng), vel_noise(rng), vel_noise(rng));
+    #####:   76:    particles[i] = Particle(pos, vel, mass_per_particle * 2, i);
+        -:   77:  }
+        -:   78:
+        -:   79:  // Spiral arm particles
+    #####:   80:  for (int i = bulge_count; i < n; ++i) {
+    #####:   81:    double r = pow(r_dist(rng), 0.5) * radius;
+    #####:   82:    double base_theta = theta_dist(rng);
+    #####:   83:    double spiral_theta =
+    #####:   84:        base_theta + (r / radius) * 2.0 * M_PI * arm_count * 0.5;
+        -:   85:
+    #####:   86:    std::normal_distribution<double> theta_noise(0.0, 0.2);
+    #####:   87:    spiral_theta += theta_noise(rng);
+        -:   88:
+    #####:   89:    double x = r * cos(spiral_theta);
+    #####:   90:    double y = r * sin(spiral_theta);
+    #####:   91:    double z = z_dist(rng);
+        -:   92:
+    #####:   93:    Vector3D pos(x, y, z);
+        -:   94:
+    #####:   95:    double v_circ = sqrt(total_mass * 0.5 / (r + 0.1));
+    #####:   96:    double vx = -v_circ * sin(spiral_theta) + vel_noise(rng);
+    #####:   97:    double vy = v_circ * cos(spiral_theta) + vel_noise(rng);
+    #####:   98:    double vz = vel_noise(rng);
+        -:   99:
+    #####:  100:    Vector3D vel(vx, vy, vz);
+    #####:  101:    particles[i] = Particle(pos, vel, mass_per_particle, i);
+        -:  102:  }
+        -:  103:
+    #####:  104:  return particles;
+    =====:  105:}
+        -:  106:
+    #####:  107:std::vector<Particle> generate_collision(int n, double separation,
+        -:  108:                                         double radius, double total_mass,
+        -:  109:                                         unsigned int seed) {
+    #####:  110:  int n_each = n / 2;
+        -:  111:
+    #####:  112:  auto galaxy1 = generate_galaxy(n_each, radius, total_mass / 2, 2, seed);
+        -:  113:  auto galaxy2 =
+    #####:  114:      generate_galaxy(n - n_each, radius, total_mass / 2, 2, seed + 1);
+        -:  115:
+    #####:  116:  Vector3D offset(separation, 0, 0);
+    #####:  117:  Vector3D vel_offset(-0.5, 0.2, 0);
+        -:  118:
+    #####:  119:  for (auto &p : galaxy2) {
+    #####:  120:    p.position = p.position + offset;
+    #####:  121:    p.velocity = p.velocity + vel_offset;
+    #####:  122:    p.id += n_each;
+        -:  123:  }
+        -:  124:
+    #####:  125:  std::vector<Particle> particles;
+    #####:  126:  particles.reserve(n);
+    #####:  127:  particles.insert(particles.end(), galaxy1.begin(), galaxy1.end());
+    #####:  128:  particles.insert(particles.end(), galaxy2.begin(), galaxy2.end());
+        -:  129:
+    #####:  130:  return particles;
+    #####:  131:}
+        -:  132:
+        3:  133:std::vector<Particle> generate_plummer(int n, double scale_radius,
+        -:  134:                                       double total_mass, unsigned int seed) {
+        6:  135:  std::vector<Particle> particles(n);
+        3:  136:  std::mt19937 rng(seed);
+        3:  137:  std::uniform_real_distribution<double> u_dist(0.0, 1.0);
+        -:  138:
+        3:  139:  double mass_per_particle = total_mass / n;
+        -:  140:
+     3003:  141:  for (int i = 0; i < n; ++i) {
+     3000:  142:    double u = u_dist(rng);
+     3000:  143:    double r = scale_radius / sqrt(pow(u, -2.0 / 3.0) - 1.0);
+     3000:  144:    r = std::min(r, scale_radius * 100.0);
+        -:  145:
+     3000:  146:    double cos_theta = 2.0 * u_dist(rng) - 1.0;
+     3000:  147:    double sin_theta = sqrt(1.0 - cos_theta * cos_theta);
+     3000:  148:    double phi = 2.0 * M_PI * u_dist(rng);
+        -:  149:
+     3000:  150:    double x = r * sin_theta * cos(phi);
+     3000:  151:    double y = r * sin_theta * sin(phi);
+     3000:  152:    double z = r * cos_theta;
+        -:  153:
+     3000:  154:    Vector3D pos(x, y, z);
+        -:  155:
+        -:  156:    double v_escape =
+     3000:  157:        sqrt(2.0 * total_mass / sqrt(r * r + scale_radius * scale_radius));
+        -:  158:
+        -:  159:    double q, g;
+        -:  160:    do {
+     6840:  161:      q = u_dist(rng);
+     6840:  162:      g = q * q * pow(1.0 - q * q, 3.5);
+     6840:  163:    } while (u_dist(rng) > g / 0.1);
+        -:  164:
+     3000:  165:    double v = q * v_escape * 0.5;
+        -:  166:
+     3000:  167:    double cos_theta_v = 2.0 * u_dist(rng) - 1.0;
+     3000:  168:    double sin_theta_v = sqrt(1.0 - cos_theta_v * cos_theta_v);
+     3000:  169:    double phi_v = 2.0 * M_PI * u_dist(rng);
+        -:  170:
+     3000:  171:    double vx = v * sin_theta_v * cos(phi_v);
+     3000:  172:    double vy = v * sin_theta_v * sin(phi_v);
+     3000:  173:    double vz = v * cos_theta_v;
+        -:  174:
+     3000:  175:    Vector3D vel(vx, vy, vz);
+     3000:  176:    particles[i] = Particle(pos, vel, mass_per_particle, i);
+        -:  177:  }
+        -:  178:
+        6:  179:  return particles;
+    =====:  180:}

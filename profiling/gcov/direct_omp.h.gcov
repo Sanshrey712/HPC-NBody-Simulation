@@ -1,0 +1,51 @@
+        -:    0:Source:/home/sunny/Desktop/HPC_Project/src/openmp/direct_omp.h
+        -:    0:Graph:./CMakeFiles/nbody_gcov.dir/src/main.cpp.gcno
+        -:    0:Data:./CMakeFiles/nbody_gcov.dir/src/main.cpp.gcda
+        -:    0:Runs:4
+        -:    1:#ifndef DIRECT_OMP_H
+        -:    2:#define DIRECT_OMP_H
+        -:    3:
+        -:    4:#include "../common/config.h"
+        -:    5:#include "../common/particle.h"
+        -:    6:#include <vector>
+        -:    7:
+        -:    8:// OpenMP-parallel direct O(N²) N-Body force computation
+        -:    9:class DirectNBodyOMP {
+        -:   10:public:
+        -:   11:  DirectNBodyOMP(double G = Constants::G_NORMALIZED,
+        -:   12:                 double softening = Constants::SOFTENING);
+        -:   13:
+        -:   14:  // Compute all pairwise forces with OpenMP parallelization
+        -:   15:  void compute_forces(std::vector<Particle> &particles);
+        -:   16:
+        -:   17:  // Single timestep using Leapfrog integration (parallel)
+        -:   18:  void integrate(std::vector<Particle> &particles, double dt);
+        -:   19:
+        -:   20:  // Full simulation step
+        -:   21:  void step(std::vector<Particle> &particles, double dt);
+        -:   22:
+        -:   23:  // Compute total energy (kinetic + potential) - parallel
+        -:   24:  double compute_total_energy(const std::vector<Particle> &particles) const;
+        -:   25:
+        -:   26:  // Compute kinetic energy (parallel)
+        -:   27:  double compute_kinetic_energy(const std::vector<Particle> &particles) const;
+        -:   28:
+        -:   29:  // Compute potential energy (parallel)
+        -:   30:  double compute_potential_energy(const std::vector<Particle> &particles) const;
+        -:   31:
+        -:   32:  // Get interaction count
+    #####:   33:  long long get_interaction_count() const { return interaction_count_; }
+        -:   34:
+        -:   35:  // Set number of threads
+        -:   36:  void set_num_threads(int n);
+        -:   37:  int get_num_threads() const { return num_threads_; }
+        -:   38:
+        -:   39:private:
+        -:   40:  double G_;
+        -:   41:  double softening_;
+        -:   42:  double softening_sq_;
+        -:   43:  long long interaction_count_;
+        -:   44:  int num_threads_;
+        -:   45:};
+        -:   46:
+        -:   47:#endif // DIRECT_OMP_H

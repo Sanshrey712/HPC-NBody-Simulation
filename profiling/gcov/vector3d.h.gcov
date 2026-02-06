@@ -1,0 +1,119 @@
+        -:    0:Source:/home/sunny/Desktop/HPC_Project/src/common/vector3d.h
+        -:    0:Graph:./CMakeFiles/nbody_gcov.dir/src/openmp/direct_omp.cpp.gcno
+        -:    0:Data:./CMakeFiles/nbody_gcov.dir/src/openmp/direct_omp.cpp.gcda
+        -:    0:Runs:4
+        -:    1:#ifndef VECTOR3D_H
+        -:    2:#define VECTOR3D_H
+        -:    3:
+        -:    4:#include <cmath>
+        -:    5:#include <iostream>
+        -:    6:
+        -:    7:#ifdef __CUDACC__
+        -:    8:#define CUDA_HOSTDEV __host__ __device__
+        -:    9:#else
+        -:   10:#define CUDA_HOSTDEV
+        -:   11:#endif
+        -:   12:
+        -:   13:struct Vector3D {
+        -:   14:    double x, y, z;
+        -:   15:
+    #####:   16:    CUDA_HOSTDEV Vector3D() : x(0.0), y(0.0), z(0.0) {}
+    #####:   17:    CUDA_HOSTDEV Vector3D(double x_, double y_, double z_) : x(x_), y(y_), z(z_) {}
+        -:   18:
+        -:   19:    // Vector addition
+        -:   20:    CUDA_HOSTDEV Vector3D operator+(const Vector3D& v) const {
+        -:   21:        return Vector3D(x + v.x, y + v.y, z + v.z);
+        -:   22:    }
+        -:   23:
+        -:   24:    // Vector subtraction
+    #####:   25:    CUDA_HOSTDEV Vector3D operator-(const Vector3D& v) const {
+    #####:   26:        return Vector3D(x - v.x, y - v.y, z - v.z);
+        -:   27:    }
+        -:   28:
+        -:   29:    // Scalar multiplication
+    #####:   30:    CUDA_HOSTDEV Vector3D operator*(double s) const {
+    #####:   31:        return Vector3D(x * s, y * s, z * s);
+        -:   32:    }
+        -:   33:
+        -:   34:    // Scalar division
+        -:   35:    CUDA_HOSTDEV Vector3D operator/(double s) const {
+        -:   36:        return Vector3D(x / s, y / s, z / s);
+        -:   37:    }
+        -:   38:
+        -:   39:    // Compound assignment operators
+    #####:   40:    CUDA_HOSTDEV Vector3D& operator+=(const Vector3D& v) {
+    #####:   41:        x += v.x; y += v.y; z += v.z;
+    #####:   42:        return *this;
+        -:   43:    }
+        -:   44:
+    #####:   45:    CUDA_HOSTDEV Vector3D& operator-=(const Vector3D& v) {
+    #####:   46:        x -= v.x; y -= v.y; z -= v.z;
+    #####:   47:        return *this;
+        -:   48:    }
+        -:   49:
+        -:   50:    CUDA_HOSTDEV Vector3D& operator*=(double s) {
+        -:   51:        x *= s; y *= s; z *= s;
+        -:   52:        return *this;
+        -:   53:    }
+        -:   54:
+        -:   55:    CUDA_HOSTDEV Vector3D& operator/=(double s) {
+        -:   56:        x /= s; y /= s; z /= s;
+        -:   57:        return *this;
+        -:   58:    }
+        -:   59:
+        -:   60:    // Dot product
+        -:   61:    CUDA_HOSTDEV double dot(const Vector3D& v) const {
+        -:   62:        return x * v.x + y * v.y + z * v.z;
+        -:   63:    }
+        -:   64:
+        -:   65:    // Cross product
+        -:   66:    CUDA_HOSTDEV Vector3D cross(const Vector3D& v) const {
+        -:   67:        return Vector3D(
+        -:   68:            y * v.z - z * v.y,
+        -:   69:            z * v.x - x * v.z,
+        -:   70:            x * v.y - y * v.x
+        -:   71:        );
+        -:   72:    }
+        -:   73:
+        -:   74:    // Magnitude squared (avoids sqrt)
+    #####:   75:    CUDA_HOSTDEV double magnitude_sq() const {
+    #####:   76:        return x * x + y * y + z * z;
+        -:   77:    }
+        -:   78:
+        -:   79:    // Magnitude
+        -:   80:    CUDA_HOSTDEV double magnitude() const {
+        -:   81:        return sqrt(magnitude_sq());
+        -:   82:    }
+        -:   83:
+        -:   84:    // Normalized vector
+        -:   85:    CUDA_HOSTDEV Vector3D normalized() const {
+        -:   86:        double mag = magnitude();
+        -:   87:        if (mag > 0.0) {
+        -:   88:            return *this / mag;
+        -:   89:        }
+        -:   90:        return Vector3D();
+        -:   91:    }
+        -:   92:
+        -:   93:    // Distance to another vector
+        -:   94:    CUDA_HOSTDEV double distance_to(const Vector3D& v) const {
+        -:   95:        return (*this - v).magnitude();
+        -:   96:    }
+        -:   97:
+        -:   98:    // Distance squared (for efficiency)
+        -:   99:    CUDA_HOSTDEV double distance_sq_to(const Vector3D& v) const {
+        -:  100:        return (*this - v).magnitude_sq();
+        -:  101:    }
+        -:  102:
+        -:  103:    // Print (CPU only)
+        -:  104:    friend std::ostream& operator<<(std::ostream& os, const Vector3D& v) {
+        -:  105:        os << "(" << v.x << ", " << v.y << ", " << v.z << ")";
+        -:  106:        return os;
+        -:  107:    }
+        -:  108:};
+        -:  109:
+        -:  110:// Scalar * Vector
+        -:  111:CUDA_HOSTDEV inline Vector3D operator*(double s, const Vector3D& v) {
+        -:  112:    return v * s;
+        -:  113:}
+        -:  114:
+        -:  115:#endif // VECTOR3D_H

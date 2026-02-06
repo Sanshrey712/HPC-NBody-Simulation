@@ -1,0 +1,184 @@
+        -:    0:Source:/home/sunny/Desktop/HPC_Project/src/openmp/barnes_hut_omp.cpp
+        -:    0:Graph:./CMakeFiles/nbody_gcov.dir/src/openmp/barnes_hut_omp.cpp.gcno
+        -:    0:Data:./CMakeFiles/nbody_gcov.dir/src/openmp/barnes_hut_omp.cpp.gcda
+        -:    0:Runs:4
+        -:    1:#include "barnes_hut_omp.h"
+        -:    2:#include <cmath>
+        -:    3:#include <omp.h>
+        -:    4:#include <functional>
+        -:    5:
+        1:    6:BarnesHutOMP::BarnesHutOMP(double G, double theta, double softening)
+        1:    7:    : G_(G), theta_(theta), theta_sq_(theta * theta), softening_(softening),
+        2:    8:      softening_sq_(softening * softening), interaction_count_(0),
+        1:    9:      num_threads_(omp_get_max_threads()) {}
+        -:   10:
+        1:   11:void BarnesHutOMP::set_num_threads(int n) {
+        1:   12:  num_threads_ = n;
+        1:   13:  omp_set_num_threads(n);
+        1:   14:}
+        -:   15:
+       11:   16:void BarnesHutOMP::build_tree(const std::vector<Particle> &particles) {
+        -:   17:  // Tree construction is serial (parallelizing octree build is complex)
+        -:   18:  // The tree is read-only during force computation, so this is safe
+       11:   19:  tree_.build(particles);
+       11:   20:}
+        -:   21:
+ 20700160:   22:void BarnesHutOMP::compute_force_on_particle(Particle &particle,
+        -:   23:                                             const OctreeNode *node,
+        -:   24:                                             long long &local_count) {
+ 20700160:   25:  if (!node || node->get_type() == OctreeNode::Type::EMPTY) {
+ 11478811:   26:    return;
+        -:   27:  }
+        -:   28:
+  9221349:   29:  if (node->get_type() == OctreeNode::Type::LEAF) {
+  5026153:   30:    const Particle *other = node->get_particle();
+  5026153:   31:    if (other->id == particle.id) {
+    11000:   32:      return;
+        -:   33:    }
+        -:   34:
+  5015153:   35:    Vector3D r = other->position - particle.position;
+  5015153:   36:    double dist_sq = r.magnitude_sq() + softening_sq_;
+  5015153:   37:    double dist = sqrt(dist_sq);
+  5015153:   38:    double dist_cubed = dist_sq * dist;
+        -:   39:
+  5015153:   40:    double force_factor = G_ * other->mass / dist_cubed;
+  5015153:   41:    particle.acceleration += r * force_factor;
+        -:   42:
+  5015153:   43:    local_count++;
+  5015153:   44:    return;
+        -:   45:  }
+        -:   46:
+        -:   47:  // Internal node - check MAC criterion
+  4195196:   48:  if (node->can_approximate(particle.position, theta_)) {
+  1609051:   49:    Vector3D r = node->get_center_of_mass() - particle.position;
+  1609051:   50:    double dist_sq = r.magnitude_sq() + softening_sq_;
+  1609051:   51:    double dist = sqrt(dist_sq);
+  1609051:   52:    double dist_cubed = dist_sq * dist;
+        -:   53:
+  1609051:   54:    double force_factor = G_ * node->get_total_mass() / dist_cubed;
+  1609051:   55:    particle.acceleration += r * force_factor;
+        -:   56:
+  1609051:   57:    local_count++;
+        -:   58:  } else {
+ 23275305:   59:    for (int i = 0; i < 8; ++i) {
+ 20689160:   60:      compute_force_on_particle(particle, node->get_child(i), local_count);
+        -:   61:    }
+        -:   62:  }
+        -:   63:}
+        -:   64:
+       11:   65:void BarnesHutOMP::compute_forces(std::vector<Particle> &particles) {
+       11:   66:  int n = static_cast<int>(particles.size());
+       11:   67:  long long total_interactions = 0;
+        -:   68:
+        -:   69:// Reset accelerations in parallel
+       11:   70:#pragma omp parallel for schedule(static)
+        -:   71:  for (int i = 0; i < n; ++i) {
+        -:   72:    particles[i].reset_acceleration();
+        -:   73:  }
+        -:   74:
+        -:   75:// Parallel force computation - each particle traverses tree independently
+        -:   76:// Tree is read-only, so this is safe
+       11:   77:#pragma omp parallel reduction(+ : total_interactions)
+        -:   78:  {
+        -:   79:    long long local_count = 0;
+        -:   80:
+        -:   81:#pragma omp for schedule(dynamic, 16)
+        -:   82:    for (int i = 0; i < n; ++i) {
+        -:   83:      compute_force_on_particle(particles[i], tree_.get_root(), local_count);
+        -:   84:    }
+        -:   85:
+        -:   86:    total_interactions += local_count;
+        -:   87:  }
+        -:   88:
+       11:   89:  interaction_count_ = total_interactions;
+       11:   90:}
+        -:   91:
+       10:   92:void BarnesHutOMP::integrate(std::vector<Particle> &particles, double dt) {
+       10:   93:  int n = static_cast<int>(particles.size());
+       10:   94:  double half_dt = 0.5 * dt;
+        -:   95:
+        -:   96:// Kick-Drift (parallel)
+       10:   97:#pragma omp parallel for schedule(static)
+        -:   98:  for (int i = 0; i < n; ++i) {
+        -:   99:    particles[i].velocity += particles[i].acceleration * half_dt;
+        -:  100:    particles[i].position += particles[i].velocity * dt;
+        -:  101:  }
+        -:  102:
+        -:  103:  // Rebuild tree at new positions
+       10:  104:  build_tree(particles);
+        -:  105:
+        -:  106:  // Compute new forces
+       10:  107:  compute_forces(particles);
+        -:  108:
+        -:  109:// Final kick (parallel)
+       10:  110:#pragma omp parallel for schedule(static)
+        -:  111:  for (int i = 0; i < n; ++i) {
+        -:  112:    particles[i].velocity += particles[i].acceleration * half_dt;
+        -:  113:  }
+       10:  114:}
+        -:  115:
+       10:  116:void BarnesHutOMP::step(std::vector<Particle> &particles, double dt) {
+       10:  117:  integrate(particles, dt);
+       10:  118:}
+        -:  119:
+    #####:  120:double BarnesHutOMP::compute_kinetic_energy(
+        -:  121:    const std::vector<Particle> &particles) const {
+    #####:  122:  double KE = 0.0;
+    #####:  123:  int n = static_cast<int>(particles.size());
+        -:  124:
+    #####:  125:#pragma omp parallel for reduction(+ : KE) schedule(static)
+        -:  126:  for (int i = 0; i < n; ++i) {
+        -:  127:    KE += particles[i].kinetic_energy();
+        -:  128:  }
+        -:  129:
+    #####:  130:  return KE;
+        -:  131:}
+        -:  132:
+    #####:  133:double BarnesHutOMP::compute_total_energy(std::vector<Particle> &particles) {
+        -:  134:  // Approximate potential energy using tree (parallel over particles)
+    #####:  135:  double PE = 0.0;
+    #####:  136:  int n = static_cast<int>(particles.size());
+        -:  137:
+    #####:  138:  if (!tree_.get_root()) {
+    #####:  139:    build_tree(particles);
+        -:  140:  }
+        -:  141:
+    #####:  142:#pragma omp parallel reduction(+ : PE)
+        -:  143:  {
+        -:  144:    std::function<double(const Particle &, const OctreeNode *)> calc_pe;
+    #####:  145:    calc_pe = [&](const Particle &p, const OctreeNode *node) -> double {
+    #####:  146:      if (!node || node->get_type() == OctreeNode::Type::EMPTY) {
+    #####:  147:        return 0.0;
+        -:  148:      }
+        -:  149:
+    #####:  150:      if (node->get_type() == OctreeNode::Type::LEAF) {
+    #####:  151:        const Particle *other = node->get_particle();
+    #####:  152:        if (other->id == p.id)
+    #####:  153:          return 0.0;
+        -:  154:
+    #####:  155:        Vector3D r = other->position - p.position;
+    #####:  156:        double dist = sqrt(r.magnitude_sq() + softening_sq_);
+    #####:  157:        return -G_ * p.mass * other->mass / dist;
+        -:  158:      }
+        -:  159:
+    #####:  160:      if (node->can_approximate(p.position, theta_)) {
+    #####:  161:        Vector3D r = node->get_center_of_mass() - p.position;
+    #####:  162:        double dist = sqrt(r.magnitude_sq() + softening_sq_);
+    #####:  163:        return -G_ * p.mass * node->get_total_mass() / dist;
+        -:  164:      }
+        -:  165:
+    #####:  166:      double sum = 0.0;
+    #####:  167:      for (int i = 0; i < 8; ++i) {
+    #####:  168:        sum += calc_pe(p, node->get_child(i));
+        -:  169:      }
+    #####:  170:      return sum;
+        -:  171:    };
+        -:  172:
+        -:  173:#pragma omp for schedule(dynamic, 16)
+        -:  174:    for (int i = 0; i < n; ++i) {
+        -:  175:      PE += calc_pe(particles[i], tree_.get_root());
+        -:  176:    }
+        -:  177:  }
+        -:  178:
+    #####:  179:  return compute_kinetic_energy(particles) + PE * 0.5;
+        -:  180:}

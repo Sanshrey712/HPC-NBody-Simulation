@@ -1,0 +1,165 @@
+        -:    0:Source:/home/sunny/Desktop/HPC_Project/src/serial/barnes_hut.cpp
+        -:    0:Graph:./CMakeFiles/nbody_gcov.dir/src/serial/barnes_hut.cpp.gcno
+        -:    0:Data:./CMakeFiles/nbody_gcov.dir/src/serial/barnes_hut.cpp.gcda
+        -:    0:Runs:4
+        -:    1:#include "barnes_hut.h"
+        -:    2:#include <cmath>
+        -:    3:#include <functional>
+        -:    4:
+        1:    5:BarnesHutSolver::BarnesHutSolver(double G, double theta, double softening)
+        1:    6:    : G_(G), theta_(theta), theta_sq_(theta * theta), softening_(softening),
+        1:    7:      softening_sq_(softening * softening), interaction_count_(0) {}
+        -:    8:
+       11:    9:void BarnesHutSolver::build_tree(const std::vector<Particle> &particles) {
+       11:   10:  tree_.build(particles);
+       11:   11:}
+        -:   12:
+ 20700160:   13:void BarnesHutSolver::compute_force_on_particle(Particle &particle,
+        -:   14:                                                const OctreeNode *node) {
+ 20700160:   15:  if (!node || node->get_type() == OctreeNode::Type::EMPTY) {
+ 11478811:   16:    return;
+        -:   17:  }
+        -:   18:
+  9221349:   19:  if (node->get_type() == OctreeNode::Type::LEAF) {
+        -:   20:    // Leaf node - compute direct force if not same particle
+  5026153:   21:    const Particle *other = node->get_particle();
+  5026153:   22:    if (other->id == particle.id) {
+    11000:   23:      return; // Skip self-interaction
+        -:   24:    }
+        -:   25:
+  5015153:   26:    Vector3D r = other->position - particle.position;
+  5015153:   27:    double dist_sq = r.magnitude_sq() + softening_sq_;
+  5015153:   28:    double dist = sqrt(dist_sq);
+  5015153:   29:    double dist_cubed = dist_sq * dist;
+        -:   30:
+  5015153:   31:    double force_factor = G_ * other->mass / dist_cubed;
+  5015153:   32:    particle.acceleration += r * force_factor;
+        -:   33:
+  5015153:   34:    interaction_count_++;
+  5015153:   35:    return;
+        -:   36:  }
+        -:   37:
+        -:   38:  // Internal node - check MAC criterion
+  4195196:   39:  if (node->can_approximate(particle.position, theta_)) {
+        -:   40:    // Use center of mass approximation
+  1609051:   41:    Vector3D r = node->get_center_of_mass() - particle.position;
+  1609051:   42:    double dist_sq = r.magnitude_sq() + softening_sq_;
+  1609051:   43:    double dist = sqrt(dist_sq);
+  1609051:   44:    double dist_cubed = dist_sq * dist;
+        -:   45:
+  1609051:   46:    double force_factor = G_ * node->get_total_mass() / dist_cubed;
+  1609051:   47:    particle.acceleration += r * force_factor;
+        -:   48:
+  1609051:   49:    interaction_count_++;
+        -:   50:  } else {
+        -:   51:    // Recurse into children
+ 23275305:   52:    for (int i = 0; i < 8; ++i) {
+ 20689160:   53:      compute_force_on_particle(particle, node->get_child(i));
+        -:   54:    }
+        -:   55:  }
+        -:   56:}
+        -:   57:
+       11:   58:void BarnesHutSolver::compute_forces(std::vector<Particle> &particles) {
+       11:   59:  interaction_count_ = 0;
+        -:   60:
+        -:   61:  // Reset accelerations
+    11011:   62:  for (auto &p : particles) {
+    11000:   63:    p.reset_acceleration();
+        -:   64:  }
+        -:   65:
+        -:   66:  // Compute force on each particle using tree traversal
+    11011:   67:  for (auto &p : particles) {
+    11000:   68:    compute_force_on_particle(p, tree_.get_root());
+        -:   69:  }
+       11:   70:}
+        -:   71:
+       10:   72:void BarnesHutSolver::integrate(std::vector<Particle> &particles, double dt) {
+        -:   73:  // Leapfrog integration (Kick-Drift-Kick)
+       10:   74:  double half_dt = 0.5 * dt;
+        -:   75:
+    10010:   76:  for (auto &p : particles) {
+        -:   77:    // Kick: update velocity by half step
+    10000:   78:    p.velocity += p.acceleration * half_dt;
+        -:   79:
+        -:   80:    // Drift: update position by full step
+    10000:   81:    p.position += p.velocity * dt;
+        -:   82:  }
+        -:   83:
+        -:   84:  // Rebuild tree at new positions
+       10:   85:  build_tree(particles);
+        -:   86:
+        -:   87:  // Compute new forces
+       10:   88:  compute_forces(particles);
+        -:   89:
+    10010:   90:  for (auto &p : particles) {
+        -:   91:    // Kick: update velocity by half step
+    10000:   92:    p.velocity += p.acceleration * half_dt;
+        -:   93:  }
+       10:   94:}
+        -:   95:
+       10:   96:void BarnesHutSolver::step(std::vector<Particle> &particles, double dt) {
+       10:   97:  integrate(particles, dt);
+       10:   98:}
+        -:   99:
+        2:  100:double BarnesHutSolver::compute_kinetic_energy(
+        -:  101:    const std::vector<Particle> &particles) const {
+        2:  102:  double KE = 0.0;
+     2002:  103:  for (const auto &p : particles) {
+     2000:  104:    KE += p.kinetic_energy();
+        -:  105:  }
+        2:  106:  return KE;
+        -:  107:}
+        -:  108:
+        2:  109:double BarnesHutSolver::compute_potential_energy(
+        -:  110:    const std::vector<Particle> &particles) {
+        -:  111:  // Use tree-based approximation for potential energy
+        2:  112:  double PE = 0.0;
+        -:  113:
+        -:  114:  // Build tree if not already built
+        2:  115:  if (!tree_.get_root()) {
+    #####:  116:    tree_.build(particles);
+        -:  117:  }
+        -:  118:
+        -:  119:  // For each particle, traverse tree (similar to force computation)
+     2002:  120:  for (const auto &p : particles) {
+        -:  121:    std::function<double(const OctreeNode *)> calc_pe =
+    #####:  122:        [&](const OctreeNode *node) -> double {
+  3762280:  123:      if (!node || node->get_type() == OctreeNode::Type::EMPTY) {
+  2085368:  124:        return 0.0;
+        -:  125:      }
+        -:  126:
+  1676912:  127:      if (node->get_type() == OctreeNode::Type::LEAF) {
+   914798:  128:        const Particle *other = node->get_particle();
+   914798:  129:        if (other->id == p.id)
+     2000:  130:          return 0.0;
+        -:  131:
+   912798:  132:        Vector3D r = other->position - p.position;
+   912798:  133:        double dist = sqrt(r.magnitude_sq() + softening_sq_);
+   912798:  134:        return -G_ * p.mass * other->mass / dist;
+        -:  135:      }
+        -:  136:
+   762114:  137:      if (node->can_approximate(p.position, theta_)) {
+   292079:  138:        Vector3D r = node->get_center_of_mass() - p.position;
+   292079:  139:        double dist = sqrt(r.magnitude_sq() + softening_sq_);
+   292079:  140:        return -G_ * p.mass * node->get_total_mass() / dist;
+        -:  141:      }
+        -:  142:
+   470035:  143:      double sum = 0.0;
+  4230315:  144:      for (int i = 0; i < 8; ++i) {
+  3760280:  145:        sum += calc_pe(node->get_child(i));
+        -:  146:      }
+   470035:  147:      return sum;
+     2000:  148:    };
+        -:  149:
+     2000:  150:    PE += calc_pe(tree_.get_root());
+     2000:  151:  }
+        -:  152:
+        -:  153:  // Divide by 2 to correct for double counting
+        2:  154:  return PE * 0.5;
+        -:  155:}
+        -:  156:
+        -:  157:double
+        2:  158:BarnesHutSolver::compute_total_energy(const std::vector<Particle> &particles) {
+        2:  159:  return compute_kinetic_energy(particles) +
+        2:  160:         compute_potential_energy(particles);
+        -:  161:}

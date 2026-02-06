@@ -1,0 +1,380 @@
+        -:    0:Source:/home/sunny/Desktop/HPC_Project/src/main.cpp
+        -:    0:Graph:./CMakeFiles/nbody_gcov.dir/src/main.cpp.gcno
+        -:    0:Data:./CMakeFiles/nbody_gcov.dir/src/main.cpp.gcda
+        -:    0:Runs:4
+        -:    1:#include <chrono>
+        -:    2:#include <cstring>
+        -:    3:#include <fstream>
+        -:    4:#include <iomanip>
+        -:    5:#include <iostream>
+        -:    6:
+        -:    7:// Common
+        -:    8:#include "common/config.h"
+        -:    9:#include "common/particle.h"
+        -:   10:
+        -:   11:// Serial
+        -:   12:#include "serial/barnes_hut.h"
+        -:   13:#include "serial/direct_nbody.h"
+        -:   14:#include "serial/generators.h"
+        -:   15:
+        -:   16:// OpenMP
+        -:   17:#ifdef USE_OPENMP
+        -:   18:#include "openmp/barnes_hut_omp.h"
+        -:   19:#include "openmp/direct_omp.h"
+        -:   20:#include <omp.h>
+        -:   21:#endif
+        -:   22:
+        -:   23:// MPI
+        -:   24:#ifdef USE_MPI
+        -:   25:#include "mpi/nbody_mpi.h"
+        -:   26:#include <mpi.h>
+        -:   27:#endif
+        -:   28:
+        -:   29:// CUDA
+        -:   30:#ifdef USE_CUDA
+        -:   31:#include "cuda/nbody_cuda.h"
+        -:   32:#endif
+        -:   33:
+        -:   34:// LIKWID
+        -:   35:#ifdef LIKWID_PERFMON
+        -:   36:#include <likwid.h>
+        -:   37:#endif
+        -:   38:
+        -:   39:// Output particle positions
+    #####:   40:void output_particles(const std::vector<Particle> &particles,
+        -:   41:                      const std::string &filename, int step) {
+    #####:   42:  std::ofstream file(filename, step == 0 ? std::ios::trunc : std::ios::app);
+    #####:   43:  file << "# Step " << step << ", N=" << particles.size() << "\n";
+    #####:   44:  for (const auto &p : particles) {
+    #####:   45:    file << p.position.x << " " << p.position.y << " " << p.position.z << "\n";
+        -:   46:  }
+    #####:   47:  file << "\n";
+    #####:   48:}
+        -:   49:
+        -:   50:// Generate initial conditions
+        3:   51:std::vector<Particle> generate_particles(const SimConfig &config) {
+        3:   52:  std::cout << "Generating " << config.num_particles << " particles...\n";
+        3:   53:  return generate_plummer(config.num_particles, config.domain_size / 4.0,
+        3:   54:                          config.total_mass, 42);
+        -:   55:}
+        -:   56:
+        -:   57:// Run serial simulation
+        2:   58:void run_serial(SimConfig &config) {
+        2:   59:  std::cout << "\n=== Serial Mode ===\n";
+        -:   60:
+        2:   61:  auto particles = generate_particles(config);
+        -:   62:
+        -:   63:  Timer timer;
+        2:   64:  PerfStats stats;
+        -:   65:
+        2:   66:  double initial_energy = 0.0;
+        -:   67:
+        2:   68:  if (config.use_barnes_hut) {
+        -:   69:    BarnesHutSolver solver(Constants::G_NORMALIZED, config.theta,
+        1:   70:                           config.softening);
+        -:   71:
+        -:   72:    // Initial force computation
+        1:   73:    solver.build_tree(particles);
+        1:   74:    solver.compute_forces(particles);
+        -:   75:
+        1:   76:    if (config.enable_energy_check) {
+        1:   77:      initial_energy = solver.compute_total_energy(particles);
+        1:   78:      std::cout << "Initial energy: " << initial_energy << "\n";
+        -:   79:    }
+        -:   80:
+        1:   81:    timer.start();
+        -:   82:
+       11:   83:    for (int step = 0; step < config.num_steps; ++step) {
+       10:   84:      solver.step(particles, config.timestep);
+        -:   85:
+      10*:   86:      if (config.output_positions && step % config.output_interval == 0) {
+    #####:   87:        output_particles(particles, config.output_file, step);
+        -:   88:      }
+        -:   89:
+       10:   90:      if (step % 10 == 0) {
+        1:   91:        std::cout << "\rStep " << step << "/" << config.num_steps << std::flush;
+        -:   92:      }
+        -:   93:    }
+        -:   94:
+        1:   95:    timer.stop();
+        1:   96:    stats.force_compute_time = timer.elapsed_ms();
+        1:   97:    stats.num_interactions = solver.get_interaction_count();
+        -:   98:
+        1:   99:    if (config.enable_energy_check) {
+        1:  100:      double final_energy = solver.compute_total_energy(particles);
+        1:  101:      std::cout << "\nFinal energy: " << final_energy << " (drift: "
+        1:  102:                << std::abs(final_energy - initial_energy) /
+        1:  103:                       std::abs(initial_energy) * 100
+        1:  104:                << "%)\n";
+        -:  105:    }
+        1:  106:  } else {
+        1:  107:    DirectNBody solver(Constants::G_NORMALIZED, config.softening);
+        -:  108:
+        1:  109:    solver.compute_forces(particles);
+        -:  110:
+        1:  111:    if (config.enable_energy_check) {
+        1:  112:      initial_energy = solver.compute_total_energy(particles);
+        1:  113:      std::cout << "Initial energy: " << initial_energy << "\n";
+        -:  114:    }
+        -:  115:
+        1:  116:    timer.start();
+        -:  117:
+       11:  118:    for (int step = 0; step < config.num_steps; ++step) {
+       10:  119:      solver.step(particles, config.timestep);
+        -:  120:
+      10*:  121:      if (config.output_positions && step % config.output_interval == 0) {
+    #####:  122:        output_particles(particles, config.output_file, step);
+        -:  123:      }
+        -:  124:
+       10:  125:      if (step % 10 == 0) {
+        1:  126:        std::cout << "\rStep " << step << "/" << config.num_steps << std::flush;
+        -:  127:      }
+        -:  128:    }
+        -:  129:
+        1:  130:    timer.stop();
+        1:  131:    stats.force_compute_time = timer.elapsed_ms();
+        1:  132:    stats.num_interactions = solver.get_interaction_count();
+        -:  133:
+        1:  134:    if (config.enable_energy_check) {
+        1:  135:      double final_energy = solver.compute_total_energy(particles);
+        1:  136:      std::cout << "\nFinal energy: " << final_energy << " (drift: "
+        1:  137:                << std::abs(final_energy - initial_energy) /
+        1:  138:                       std::abs(initial_energy) * 100
+        1:  139:                << "%)\n";
+        -:  140:    }
+        -:  141:  }
+        -:  142:
+        2:  143:  stats.total_time = stats.force_compute_time;
+        2:  144:  std::cout << "\n";
+        2:  145:  stats.print();
+        2:  146:}
+        -:  147:
+        -:  148:#ifdef USE_OPENMP
+        -:  149:// Run OpenMP simulation
+        1:  150:void run_openmp(SimConfig &config) {
+        1:  151:  std::cout << "\n=== OpenMP Mode (" << config.num_threads << " threads) ===\n";
+        1:  152:  omp_set_num_threads(config.num_threads);
+        -:  153:
+        1:  154:  auto particles = generate_particles(config);
+        -:  155:
+        -:  156:  Timer timer;
+        1:  157:  PerfStats stats;
+        -:  158:
+        -:  159:#ifdef LIKWID_PERFMON
+        -:  160:  LIKWID_MARKER_INIT;
+        -:  161:  LIKWID_MARKER_THREADINIT;
+        -:  162:#endif
+        -:  163:
+        1:  164:  if (config.use_barnes_hut) {
+        -:  165:    BarnesHutOMP solver(Constants::G_NORMALIZED, config.theta,
+        1:  166:                        config.softening);
+        1:  167:    solver.set_num_threads(config.num_threads);
+        -:  168:
+        1:  169:    solver.build_tree(particles);
+        1:  170:    solver.compute_forces(particles);
+        -:  171:
+        1:  172:    timer.start();
+        -:  173:
+        -:  174:#ifdef LIKWID_PERFMON
+        -:  175:    LIKWID_MARKER_START("BH_FORCE_OMP");
+        -:  176:#endif
+        -:  177:
+       11:  178:    for (int step = 0; step < config.num_steps; ++step) {
+       10:  179:      solver.step(particles, config.timestep);
+        -:  180:
+       10:  181:      if (step % 10 == 0) {
+        1:  182:        std::cout << "\rStep " << step << "/" << config.num_steps << std::flush;
+        -:  183:      }
+        -:  184:    }
+        -:  185:
+        -:  186:#ifdef LIKWID_PERFMON
+        -:  187:    LIKWID_MARKER_STOP("BH_FORCE_OMP");
+        -:  188:#endif
+        -:  189:
+        1:  190:    timer.stop();
+        1:  191:    stats.num_interactions = solver.get_interaction_count();
+        1:  192:  } else {
+    #####:  193:    DirectNBodyOMP solver(Constants::G_NORMALIZED, config.softening);
+    #####:  194:    solver.set_num_threads(config.num_threads);
+        -:  195:
+    #####:  196:    solver.compute_forces(particles);
+        -:  197:
+    #####:  198:    timer.start();
+        -:  199:
+        -:  200:#ifdef LIKWID_PERFMON
+        -:  201:    LIKWID_MARKER_START("DIRECT_FORCE_OMP");
+        -:  202:#endif
+        -:  203:
+    #####:  204:    for (int step = 0; step < config.num_steps; ++step) {
+    #####:  205:      solver.step(particles, config.timestep);
+        -:  206:
+    #####:  207:      if (step % 10 == 0) {
+    #####:  208:        std::cout << "\rStep " << step << "/" << config.num_steps << std::flush;
+        -:  209:      }
+        -:  210:    }
+        -:  211:
+        -:  212:#ifdef LIKWID_PERFMON
+        -:  213:    LIKWID_MARKER_STOP("DIRECT_FORCE_OMP");
+        -:  214:#endif
+        -:  215:
+    #####:  216:    timer.stop();
+    #####:  217:    stats.num_interactions = solver.get_interaction_count();
+        -:  218:  }
+        -:  219:
+        -:  220:#ifdef LIKWID_PERFMON
+        -:  221:  LIKWID_MARKER_CLOSE;
+        -:  222:#endif
+        -:  223:
+        1:  224:  stats.total_time = timer.elapsed_ms();
+        1:  225:  std::cout << "\n";
+        1:  226:  stats.print();
+        1:  227:}
+        -:  228:#endif
+        -:  229:
+        -:  230:#ifdef USE_MPI
+        -:  231:// Run MPI simulation
+        -:  232:void run_mpi(SimConfig &config) {
+        -:  233:  int rank, size;
+        -:  234:  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        -:  235:  MPI_Comm_size(MPI_COMM_WORLD, &size);
+        -:  236:
+        -:  237:  if (rank == 0) {
+        -:  238:    std::cout << "\n=== MPI Mode (" << size << " ranks) ===\n";
+        -:  239:  }
+        -:  240:
+        -:  241:  std::vector<Particle> all_particles;
+        -:  242:  if (rank == 0) {
+        -:  243:    all_particles = generate_particles(config);
+        -:  244:  }
+        -:  245:
+        -:  246:  NBodyMPI solver(Constants::G_NORMALIZED, config.theta, config.softening);
+        -:  247:  solver.set_use_barnes_hut(config.use_barnes_hut);
+        -:  248:  solver.initialize(all_particles, config.domain_size);
+        -:  249:
+        -:  250:  MPI_Barrier(MPI_COMM_WORLD);
+        -:  251:  double start_time = MPI_Wtime();
+        -:  252:
+        -:  253:  solver.compute_forces();
+        -:  254:
+        -:  255:  for (int step = 0; step < config.num_steps; ++step) {
+        -:  256:    solver.step(config.timestep);
+        -:  257:
+        -:  258:    if (rank == 0 && step % 10 == 0) {
+        -:  259:      std::cout << "\rStep " << step << "/" << config.num_steps << std::flush;
+        -:  260:    }
+        -:  261:  }
+        -:  262:
+        -:  263:  MPI_Barrier(MPI_COMM_WORLD);
+        -:  264:  double end_time = MPI_Wtime();
+        -:  265:
+        -:  266:  if (rank == 0) {
+        -:  267:    std::cout << "\n\n=== MPI Performance ===\n";
+        -:  268:    std::cout << "Total time: " << (end_time - start_time) * 1000.0 << " ms\n";
+        -:  269:    std::cout << "Communication time: "
+        -:  270:              << solver.get_communication_time() * 1000.0 << " ms\n";
+        -:  271:    std::cout << "Interactions: " << solver.get_interaction_count() << "\n";
+        -:  272:    std::cout << "=======================\n";
+        -:  273:  }
+        -:  274:}
+        -:  275:#endif
+        -:  276:
+        -:  277:#ifdef USE_CUDA
+        -:  278:// Run CUDA simulation
+        -:  279:void run_cuda(SimConfig &config) {
+        -:  280:  std::cout << "\n=== CUDA Mode ===\n";
+        -:  281:
+        -:  282:  if (!NBodyCUDA::is_available()) {
+        -:  283:    std::cerr << "No CUDA device available!\n";
+        -:  284:    return;
+        -:  285:  }
+        -:  286:
+        -:  287:  NBodyCUDA::print_device_info();
+        -:  288:
+        -:  289:  auto particles = generate_particles(config);
+        -:  290:
+        -:  291:  NBodyCUDA solver(Constants::G_NORMALIZED, config.softening);
+        -:  292:  solver.set_block_size(config.block_size);
+        -:  293:  solver.initialize(particles);
+        -:  294:
+        -:  295:  Timer timer;
+        -:  296:  timer.start();
+        -:  297:
+        -:  298:  solver.compute_forces_direct();
+        -:  299:
+        -:  300:  for (int step = 0; step < config.num_steps; ++step) {
+        -:  301:    solver.step(config.timestep);
+        -:  302:
+        -:  303:    if (step % 10 == 0) {
+        -:  304:      std::cout << "\rStep " << step << "/" << config.num_steps << std::flush;
+        -:  305:    }
+        -:  306:  }
+        -:  307:
+        -:  308:  solver.synchronize(particles);
+        -:  309:  timer.stop();
+        -:  310:
+        -:  311:  std::cout << "\n\n=== CUDA Performance ===\n";
+        -:  312:  std::cout << "Total time: " << timer.elapsed_ms() << " ms\n";
+        -:  313:  std::cout << "Kernel time (last): " << solver.get_kernel_time() << " ms\n";
+        -:  314:  std::cout << "Interactions: " << solver.get_interaction_count() << "\n";
+        -:  315:  std::cout << "========================\n";
+        -:  316:}
+        -:  317:#endif
+        -:  318:
+        4:  319:int main(int argc, char *argv[]) {
+        4:  320:  SimConfig config;
+        4:  321:  config.parse_args(argc, argv);
+        -:  322:
+        -:  323:#ifdef USE_MPI
+        -:  324:  if (config.mode == SimConfig::Mode::MPI ||
+        -:  325:      config.mode == SimConfig::Mode::HYBRID_MPI_OPENMP ||
+        -:  326:      config.mode == SimConfig::Mode::HYBRID_MPI_CUDA) {
+        -:  327:    MPI_Init(&argc, &argv);
+        -:  328:    MPI_Comm_rank(MPI_COMM_WORLD, &config.my_rank);
+        -:  329:    MPI_Comm_size(MPI_COMM_WORLD, &config.num_ranks);
+        -:  330:  }
+        -:  331:#endif
+        -:  332:
+        3:  333:  if (config.my_rank == 0) {
+        3:  334:    config.print();
+        -:  335:  }
+        -:  336:
+        3:  337:  switch (config.mode) {
+        2:  338:  case SimConfig::Mode::SERIAL:
+        2:  339:    run_serial(config);
+        2:  340:    break;
+        -:  341:
+        -:  342:#ifdef USE_OPENMP
+        1:  343:  case SimConfig::Mode::OPENMP:
+        1:  344:    run_openmp(config);
+        1:  345:    break;
+        -:  346:#endif
+        -:  347:
+        -:  348:#ifdef USE_MPI
+        -:  349:  case SimConfig::Mode::MPI:
+        -:  350:    run_mpi(config);
+        -:  351:    break;
+        -:  352:#endif
+        -:  353:
+        -:  354:#ifdef USE_CUDA
+        -:  355:  case SimConfig::Mode::CUDA:
+        -:  356:    run_cuda(config);
+        -:  357:    break;
+        -:  358:#endif
+        -:  359:
+    #####:  360:  default:
+    #####:  361:    if (config.my_rank == 0) {
+    #####:  362:      std::cerr << "Unsupported mode or feature not compiled.\n";
+        -:  363:    }
+    #####:  364:    break;
+        -:  365:  }
+        -:  366:
+        -:  367:#ifdef USE_MPI
+        -:  368:  if (config.mode == SimConfig::Mode::MPI ||
+        -:  369:      config.mode == SimConfig::Mode::HYBRID_MPI_OPENMP ||
+        -:  370:      config.mode == SimConfig::Mode::HYBRID_MPI_CUDA) {
+        -:  371:    MPI_Finalize();
+        -:  372:  }
+        -:  373:#endif
+        -:  374:
+        3:  375:  return 0;
+        3:  376:}

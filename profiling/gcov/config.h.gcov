@@ -1,0 +1,119 @@
+        -:    0:Source:/home/sunny/Desktop/HPC_Project/src/common/config.h
+        -:    0:Graph:./CMakeFiles/nbody_gcov.dir/src/main.cpp.gcno
+        -:    0:Data:./CMakeFiles/nbody_gcov.dir/src/main.cpp.gcda
+        -:    0:Runs:4
+        -:    1:#ifndef CONFIG_H
+        -:    2:#define CONFIG_H
+        -:    3:
+        -:    4:#include <string>
+        -:    5:
+        -:    6:// Physical constants
+        -:    7:namespace Constants {
+        -:    8:constexpr double G = 6.67430e-11;    // Gravitational constant (m³/kg/s²)
+        -:    9:constexpr double G_NORMALIZED = 1.0; // Normalized G for simulations
+        -:   10:constexpr double SOFTENING = 0.01; // Softening parameter to avoid singularities
+        -:   11:constexpr double SOFTENING_SQ = SOFTENING * SOFTENING;
+        -:   12:} // namespace Constants
+        -:   13:
+        -:   14:// Barnes-Hut parameters
+        -:   15:namespace BarnesHut {
+        -:   16:constexpr double THETA = 0.5; // Opening angle criterion (0.5 is typical)
+        -:   17:constexpr double THETA_SQ = THETA * THETA;
+        -:   18:constexpr int MAX_DEPTH = 50; // Maximum tree depth
+        -:   19:} // namespace BarnesHut
+        -:   20:
+        -:   21:// Simulation parameters
+        -:   22:struct SimConfig {
+        -:   23:  int num_particles;   // Number of particles
+        -:   24:  double timestep;     // Time step (dt)
+        -:   25:  int num_steps;       // Number of simulation steps
+        -:   26:  double domain_size;  // Size of simulation domain
+        -:   27:  double total_mass;   // Total mass of system
+        -:   28:  bool use_barnes_hut; // Use Barnes-Hut (true) or direct N² (false)
+        -:   29:  double theta;        // Barnes-Hut opening angle
+        -:   30:  double softening;    // Softening parameter
+        -:   31:
+        -:   32:  // Execution mode
+        -:   33:  enum class Mode {
+        -:   34:    SERIAL,
+        -:   35:    OPENMP,
+        -:   36:    MPI,
+        -:   37:    CUDA,
+        -:   38:    HYBRID_MPI_OPENMP,
+        -:   39:    HYBRID_MPI_CUDA
+        -:   40:  };
+        -:   41:  Mode mode;
+        -:   42:
+        -:   43:  // OpenMP specific
+        -:   44:  int num_threads;
+        -:   45:
+        -:   46:  // MPI specific
+        -:   47:  int num_ranks;
+        -:   48:  int my_rank;
+        -:   49:
+        -:   50:  // CUDA specific
+        -:   51:  int block_size;
+        -:   52:  int device_id;
+        -:   53:
+        -:   54:  // Output options
+        -:   55:  bool output_positions;
+        -:   56:  int output_interval;
+        -:   57:  std::string output_file;
+        -:   58:
+        -:   59:  // Profiling
+        -:   60:  bool enable_profiling;
+        -:   61:  bool enable_energy_check;
+        -:   62:
+        -:   63:  // Default constructor with sensible defaults
+        4:   64:  SimConfig()
+        4:   65:      : num_particles(10000), timestep(0.001), num_steps(100),
+        4:   66:        domain_size(100.0), total_mass(1000.0), use_barnes_hut(true),
+        4:   67:        theta(BarnesHut::THETA), softening(Constants::SOFTENING),
+        4:   68:        mode(Mode::SERIAL), num_threads(1), num_ranks(1), my_rank(0),
+        4:   69:        block_size(256), device_id(0), output_positions(false),
+        8:   70:        output_interval(10), output_file("output.dat"), enable_profiling(true),
+        4:   71:        enable_energy_check(true) {}
+        -:   72:
+        -:   73:  // Parse command line arguments
+        -:   74:  void parse_args(int argc, char **argv);
+        -:   75:
+        -:   76:  // Print configuration
+        -:   77:  void print() const;
+        -:   78:};
+        -:   79:
+        -:   80:// Timer utility for profiling
+        -:   81:class Timer {
+        -:   82:public:
+        -:   83:  void start();
+        -:   84:  void stop();
+        -:   85:  double elapsed_ms() const;
+        -:   86:  double elapsed_s() const;
+        -:   87:  void reset();
+        -:   88:
+        -:   89:private:
+        -:   90:  double start_time_;
+        -:   91:  double end_time_;
+        -:   92:  bool running_;
+        -:   93:};
+        -:   94:
+        -:   95:// Performance statistics
+        -:   96:struct PerfStats {
+        -:   97:  double tree_build_time;
+        -:   98:  double force_compute_time;
+        -:   99:  double integration_time;
+        -:  100:  double communication_time; // For MPI
+        -:  101:  double total_time;
+        -:  102:  double gflops;
+        -:  103:  double memory_bandwidth_gb_s;
+        -:  104:  long long num_interactions;
+        -:  105:
+        3:  106:  PerfStats()
+        3:  107:      : tree_build_time(0), force_compute_time(0), integration_time(0),
+        3:  108:        communication_time(0), total_time(0), gflops(0),
+        3:  109:        memory_bandwidth_gb_s(0), num_interactions(0) {}
+        -:  110:
+        -:  111:  void print() const;
+        -:  112:  void accumulate(const PerfStats &other);
+        -:  113:};
+        -:  114:
+        -:  115:#endif // CONFIG_H

@@ -1,0 +1,177 @@
+        -:    0:Source:/home/sunny/Desktop/HPC_Project/src/common/config.cpp
+        -:    0:Graph:./CMakeFiles/nbody_gcov.dir/src/common/config.cpp.gcno
+        -:    0:Data:./CMakeFiles/nbody_gcov.dir/src/common/config.cpp.gcda
+        -:    0:Runs:4
+        -:    1:#include "config.h"
+        -:    2:#include <chrono>
+        -:    3:#include <cstring>
+        -:    4:#include <iomanip>
+        -:    5:#include <iostream>
+        -:    6:
+        4:    7:void SimConfig::parse_args(int argc, char **argv) {
+       16:    8:  for (int i = 1; i < argc; ++i) {
+       13:    9:    if (strcmp(argv[i], "--particles") == 0 || strcmp(argv[i], "-n") == 0) {
+        3:   10:      num_particles = std::atoi(argv[++i]);
+       10:   11:    } else if (strcmp(argv[i], "--steps") == 0 || strcmp(argv[i], "-s") == 0) {
+        3:   12:      num_steps = std::atoi(argv[++i]);
+        7:   13:    } else if (strcmp(argv[i], "--dt") == 0) {
+    #####:   14:      timestep = std::atof(argv[++i]);
+        7:   15:    } else if (strcmp(argv[i], "--theta") == 0) {
+    #####:   16:      theta = std::atof(argv[++i]);
+        7:   17:    } else if (strcmp(argv[i], "--softening") == 0) {
+    #####:   18:      softening = std::atof(argv[++i]);
+        7:   19:    } else if (strcmp(argv[i], "--mode") == 0) {
+        3:   20:      const char *mode_str = argv[++i];
+        3:   21:      if (strcmp(mode_str, "serial") == 0)
+        2:   22:        mode = Mode::SERIAL;
+        1:   23:      else if (strcmp(mode_str, "openmp") == 0)
+        1:   24:        mode = Mode::OPENMP;
+    #####:   25:      else if (strcmp(mode_str, "mpi") == 0)
+    #####:   26:        mode = Mode::MPI;
+    #####:   27:      else if (strcmp(mode_str, "cuda") == 0)
+    #####:   28:        mode = Mode::CUDA;
+    #####:   29:      else if (strcmp(mode_str, "hybrid-mpi-omp") == 0)
+    #####:   30:        mode = Mode::HYBRID_MPI_OPENMP;
+    #####:   31:      else if (strcmp(mode_str, "hybrid-mpi-cuda") == 0)
+    #####:   32:        mode = Mode::HYBRID_MPI_CUDA;
+        4:   33:    } else if (strcmp(argv[i], "--threads") == 0 ||
+        3:   34:               strcmp(argv[i], "-t") == 0) {
+        1:   35:      num_threads = std::atoi(argv[++i]);
+        3:   36:    } else if (strcmp(argv[i], "--block-size") == 0) {
+    #####:   37:      block_size = std::atoi(argv[++i]);
+        3:   38:    } else if (strcmp(argv[i], "--direct") == 0) {
+        1:   39:      use_barnes_hut = false;
+        2:   40:    } else if (strcmp(argv[i], "--barnes-hut") == 0) {
+        1:   41:      use_barnes_hut = true;
+        1:   42:    } else if (strcmp(argv[i], "--output") == 0 || strcmp(argv[i], "-o") == 0) {
+    #####:   43:      output_positions = true;
+    #####:   44:      output_file = argv[++i];
+        1:   45:    } else if (strcmp(argv[i], "--output-interval") == 0) {
+    #####:   46:      output_interval = std::atoi(argv[++i]);
+        1:   47:    } else if (strcmp(argv[i], "--no-profile") == 0) {
+    #####:   48:      enable_profiling = false;
+        1:   49:    } else if (strcmp(argv[i], "--no-energy") == 0) {
+    #####:   50:      enable_energy_check = false;
+       1*:   51:    } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
+        -:   52:      std::cout
+        -:   53:          << "N-Body Simulation\n"
+        -:   54:          << "Usage: nbody [options]\n\n"
+        -:   55:          << "Options:\n"
+        -:   56:          << "  -n, --particles N    Number of particles (default: 10000)\n"
+        -:   57:          << "  -s, --steps N        Number of timesteps (default: 100)\n"
+        -:   58:          << "  --dt T               Timestep size (default: 0.001)\n"
+        -:   59:          << "  --theta T            Barnes-Hut opening angle (default: 0.5)\n"
+        -:   60:          << "  --softening S        Softening parameter (default: 0.01)\n"
+        -:   61:          << "  --mode MODE          Execution mode: serial, openmp, mpi, "
+        -:   62:             "cuda\n"
+        -:   63:          << "  -t, --threads N      Number of OpenMP threads\n"
+        -:   64:          << "  --block-size N       CUDA block size (default: 256)\n"
+        -:   65:          << "  --direct             Use direct O(N²) method\n"
+        -:   66:          << "  --barnes-hut         Use Barnes-Hut O(N log N) method\n"
+        -:   67:          << "  -o, --output FILE    Output positions to file\n"
+        -:   68:          << "  --output-interval N  Output every N steps\n"
+        -:   69:          << "  --no-profile         Disable profiling\n"
+        -:   70:          << "  --no-energy          Disable energy conservation check\n"
+        1:   71:          << "  -h, --help           Show this help\n";
+        1:   72:      std::exit(0);
+        -:   73:    }
+        -:   74:  }
+        3:   75:}
+        -:   76:
+        3:   77:void SimConfig::print() const {
+        -:   78:  std::cout << "\n=== Simulation Configuration ===\n"
+        3:   79:            << "Particles:       " << num_particles << "\n"
+        3:   80:            << "Timesteps:       " << num_steps << "\n"
+        3:   81:            << "dt:              " << timestep << "\n"
+        3:   82:            << "Domain size:     " << domain_size << "\n"
+        -:   83:            << "Algorithm:       "
+        3:   84:            << (use_barnes_hut ? "Barnes-Hut" : "Direct N²") << "\n";
+        -:   85:
+        3:   86:  if (use_barnes_hut) {
+        2:   87:    std::cout << "Theta:           " << theta << "\n";
+        -:   88:  }
+        -:   89:
+        3:   90:  std::cout << "Softening:       " << softening << "\n"
+        3:   91:            << "Mode:            ";
+        -:   92:
+        3:   93:  switch (mode) {
+        2:   94:  case Mode::SERIAL:
+        2:   95:    std::cout << "Serial";
+        2:   96:    break;
+        1:   97:  case Mode::OPENMP:
+        1:   98:    std::cout << "OpenMP (" << num_threads << " threads)";
+        1:   99:    break;
+    #####:  100:  case Mode::MPI:
+    #####:  101:    std::cout << "MPI (" << num_ranks << " ranks)";
+    #####:  102:    break;
+    #####:  103:  case Mode::CUDA:
+    #####:  104:    std::cout << "CUDA (block size: " << block_size << ")";
+    #####:  105:    break;
+    #####:  106:  case Mode::HYBRID_MPI_OPENMP:
+    #####:  107:    std::cout << "Hybrid MPI+OpenMP";
+    #####:  108:    break;
+    #####:  109:  case Mode::HYBRID_MPI_CUDA:
+    #####:  110:    std::cout << "Hybrid MPI+CUDA";
+    #####:  111:    break;
+        -:  112:  }
+        3:  113:  std::cout << "\n================================\n\n";
+        3:  114:}
+        -:  115:
+        -:  116:// Timer implementation
+        6:  117:static double get_time() {
+        6:  118:  auto now = std::chrono::high_resolution_clock::now();
+        6:  119:  auto duration = now.time_since_epoch();
+        6:  120:  return std::chrono::duration<double>(duration).count();
+        -:  121:}
+        -:  122:
+        3:  123:void Timer::start() {
+        3:  124:  start_time_ = get_time();
+        3:  125:  running_ = true;
+        3:  126:}
+        -:  127:
+        3:  128:void Timer::stop() {
+        3:  129:  end_time_ = get_time();
+        3:  130:  running_ = false;
+        3:  131:}
+        -:  132:
+        3:  133:double Timer::elapsed_ms() const {
+        3:  134:  if (running_) {
+    #####:  135:    return (get_time() - start_time_) * 1000.0;
+        -:  136:  }
+        3:  137:  return (end_time_ - start_time_) * 1000.0;
+        -:  138:}
+        -:  139:
+    #####:  140:double Timer::elapsed_s() const { return elapsed_ms() / 1000.0; }
+        -:  141:
+    #####:  142:void Timer::reset() {
+    #####:  143:  start_time_ = 0;
+    #####:  144:  end_time_ = 0;
+    #####:  145:  running_ = false;
+    #####:  146:}
+        -:  147:
+        -:  148:// PerfStats implementation
+        3:  149:void PerfStats::print() const {
+        3:  150:  std::cout << std::fixed << std::setprecision(3);
+        -:  151:  std::cout << "\n=== Performance Statistics ===\n"
+        3:  152:            << "Tree build time:    " << tree_build_time << " ms\n"
+        3:  153:            << "Force compute time: " << force_compute_time << " ms\n"
+        3:  154:            << "Integration time:   " << integration_time << " ms\n";
+        3:  155:  if (communication_time > 0) {
+    #####:  156:    std::cout << "Communication time: " << communication_time << " ms\n";
+        -:  157:  }
+        3:  158:  std::cout << "Total time:         " << total_time << " ms\n"
+        3:  159:            << "Interactions:       " << num_interactions << "\n";
+        3:  160:  if (gflops > 0) {
+    #####:  161:    std::cout << "Performance:        " << gflops << " GFLOPS\n";
+        -:  162:  }
+        3:  163:  std::cout << "==============================\n\n";
+        3:  164:}
+        -:  165:
+    #####:  166:void PerfStats::accumulate(const PerfStats &other) {
+    #####:  167:  tree_build_time += other.tree_build_time;
+    #####:  168:  force_compute_time += other.force_compute_time;
+    #####:  169:  integration_time += other.integration_time;
+    #####:  170:  communication_time += other.communication_time;
+    #####:  171:  total_time += other.total_time;
+    #####:  172:  num_interactions += other.num_interactions;
+    #####:  173:}

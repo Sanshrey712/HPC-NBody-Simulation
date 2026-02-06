@@ -1,0 +1,1 @@
+genhtml /home/sunny/Desktop/HPC_Project/profiling/gcov/coverage.info --output-directory /home/sunny/Desktop/HPC_Project/profiling/gcov/html

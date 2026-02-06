@@ -1,0 +1,111 @@
+        -:    0:Source:/home/sunny/Desktop/HPC_Project/src/serial/octree.h
+        -:    0:Graph:./CMakeFiles/nbody_gcov.dir/src/openmp/barnes_hut_omp.cpp.gcno
+        -:    0:Data:./CMakeFiles/nbody_gcov.dir/src/openmp/barnes_hut_omp.cpp.gcda
+        -:    0:Runs:4
+        -:    1:#ifndef OCTREE_H
+        -:    2:#define OCTREE_H
+        -:    3:
+        -:    4:#include "../common/config.h"
+        -:    5:#include "../common/particle.h"
+        -:    6:#include <array>
+        -:    7:#include <memory>
+        -:    8:#include <vector>
+        -:    9:
+        -:   10:// Axis-aligned bounding box for octree nodes
+        -:   11:struct BoundingBox {
+        -:   12:  Vector3D min;
+        -:   13:  Vector3D max;
+        -:   14:  Vector3D center;
+        -:   15:  double size;
+        -:   16:
+        -:   17:  BoundingBox() : size(0) {}
+        -:   18:  BoundingBox(const Vector3D &min_, const Vector3D &max_);
+        -:   19:
+        -:   20:  // Check if point is inside box
+        -:   21:  bool contains(const Vector3D &point) const;
+        -:   22:
+        -:   23:  // Get octant index (0-7) for a point
+        -:   24:  int get_octant(const Vector3D &point) const;
+        -:   25:
+        -:   26:  // Get child bounding box for given octant
+        -:   27:  BoundingBox get_child_box(int octant) const;
+        -:   28:};
+        -:   29:
+        -:   30:// Octree node for Barnes-Hut algorithm
+        -:   31:class OctreeNode {
+        -:   32:public:
+        -:   33:  // Node types
+        -:   34:  enum class Type {
+        -:   35:    EMPTY,   // No particles
+        -:   36:    LEAF,    // Single particle
+        -:   37:    INTERNAL // Has children
+        -:   38:  };
+        -:   39:
+        -:   40:  OctreeNode(const BoundingBox &bounds);
+        -:   41:  ~OctreeNode() = default;
+        -:   42:
+        -:   43:  // Insert a particle into the tree
+        -:   44:  void insert(const Particle &particle, int depth = 0);
+        -:   45:
+        -:   46:  // Compute center of mass for this node and all children
+        -:   47:  void compute_mass_distribution();
+        -:   48:
+        -:   49:  // Check if node can be approximated (MAC criterion)
+        -:   50:  bool can_approximate(const Vector3D &point, double theta) const;
+        -:   51:
+        -:   52:  // Getters
+    #####:   53:  Type get_type() const { return type_; }
+        -:   54:  const BoundingBox &get_bounds() const { return bounds_; }
+    #####:   55:  const Vector3D &get_center_of_mass() const { return center_of_mass_; }
+    #####:   56:  double get_total_mass() const { return total_mass_; }
+    #####:   57:  const Particle *get_particle() const { return particle_; }
+    #####:   58:  OctreeNode *get_child(int i) const { return children_[i].get(); }
+        -:   59:  int get_particle_count() const { return particle_count_; }
+        -:   60:
+        -:   61:private:
+        -:   62:  Type type_;
+        -:   63:  BoundingBox bounds_;
+        -:   64:
+        -:   65:  // For internal nodes
+        -:   66:  std::array<std::unique_ptr<OctreeNode>, 8> children_;
+        -:   67:
+        -:   68:  // For leaf nodes
+        -:   69:  const Particle *particle_;
+        -:   70:
+        -:   71:  // Mass distribution (computed after tree is built)
+        -:   72:  Vector3D center_of_mass_;
+        -:   73:  double total_mass_;
+        -:   74:  int particle_count_;
+        -:   75:
+        -:   76:  // Convert leaf to internal node
+        -:   77:  void subdivide();
+        -:   78:};
+        -:   79:
+        -:   80:// Octree wrapper class for Barnes-Hut
+        -:   81:class Octree {
+        -:   82:public:
+        -:   83:  Octree(double domain_size = 100.0);
+        -:   84:
+        -:   85:  // Build tree from particles
+        -:   86:  void build(const std::vector<Particle> &particles);
+        -:   87:
+        -:   88:  // Clear the tree
+        -:   89:  void clear();
+        -:   90:
+        -:   91:  // Get root node
+    #####:   92:  OctreeNode *get_root() const { return root_.get(); }
+        -:   93:
+        -:   94:  // Statistics
+        -:   95:  int get_node_count() const;
+        -:   96:  int get_max_depth() const;
+        -:   97:
+        -:   98:private:
+        -:   99:  std::unique_ptr<OctreeNode> root_;
+        -:  100:  double domain_size_;
+        -:  101:
+        -:  102:  // Compute bounding box for all particles
+        -:  103:  BoundingBox
+        -:  104:  compute_bounding_box(const std::vector<Particle> &particles) const;
+        -:  105:};
+        -:  106:
+        -:  107:#endif // OCTREE_H

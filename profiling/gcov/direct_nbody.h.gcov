@@ -1,0 +1,52 @@
+        -:    0:Source:/home/sunny/Desktop/HPC_Project/src/serial/direct_nbody.h
+        -:    0:Graph:./CMakeFiles/nbody_gcov.dir/src/main.cpp.gcno
+        -:    0:Data:./CMakeFiles/nbody_gcov.dir/src/main.cpp.gcda
+        -:    0:Runs:4
+        -:    1:#ifndef DIRECT_NBODY_H
+        -:    2:#define DIRECT_NBODY_H
+        -:    3:
+        -:    4:#include "../common/config.h"
+        -:    5:#include "../common/particle.h"
+        -:    6:#include <vector>
+        -:    7:
+        -:    8:// Direct O(N²) N-Body force computation (serial)
+        -:    9:class DirectNBody {
+        -:   10:public:
+        -:   11:  DirectNBody(double G = Constants::G_NORMALIZED,
+        -:   12:              double softening = Constants::SOFTENING);
+        -:   13:
+        -:   14:  // Compute all pairwise forces and update accelerations
+        -:   15:  void compute_forces(std::vector<Particle> &particles);
+        -:   16:
+        -:   17:  // Single timestep using Leapfrog integration
+        -:   18:  void integrate(std::vector<Particle> &particles, double dt);
+        -:   19:
+        -:   20:  // Full simulation step
+        -:   21:  void step(std::vector<Particle> &particles, double dt);
+        -:   22:
+        -:   23:  // Compute total energy (kinetic + potential)
+        -:   24:  double compute_total_energy(const std::vector<Particle> &particles) const;
+        -:   25:
+        -:   26:  // Compute total kinetic energy
+        -:   27:  double compute_kinetic_energy(const std::vector<Particle> &particles) const;
+        -:   28:
+        -:   29:  // Compute total potential energy
+        -:   30:  double compute_potential_energy(const std::vector<Particle> &particles) const;
+        -:   31:
+        -:   32:  // Compute center of mass
+        -:   33:  Vector3D compute_center_of_mass(const std::vector<Particle> &particles) const;
+        -:   34:
+        -:   35:  // Compute total momentum
+        -:   36:  Vector3D compute_total_momentum(const std::vector<Particle> &particles) const;
+        -:   37:
+        -:   38:  // Get interaction count for last force computation
+        1:   39:  long long get_interaction_count() const { return interaction_count_; }
+        -:   40:
+        -:   41:private:
+        -:   42:  double G_;         // Gravitational constant
+        -:   43:  double softening_; // Softening parameter
+        -:   44:  double softening_sq_;
+        -:   45:  long long interaction_count_;
+        -:   46:};
+        -:   47:
+        -:   48:#endif // DIRECT_NBODY_H
