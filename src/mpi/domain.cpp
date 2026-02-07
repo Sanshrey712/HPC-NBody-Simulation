@@ -51,8 +51,13 @@ void DomainDecomposition::create_mpi_particle_type() {
     offsets[i] -= base_address;
   }
 
-  MPI_Type_create_struct(nitems, blocklengths, offsets, types, &particle_type_);
+  MPI_Datatype struct_type;
+  MPI_Type_create_struct(nitems, blocklengths, offsets, types, &struct_type);
+
+  // Resize to match C++ struct alignment/size (essential for arrays)
+  MPI_Type_create_resized(struct_type, 0, sizeof(Particle), &particle_type_);
   MPI_Type_commit(&particle_type_);
+  MPI_Type_free(&struct_type);
 }
 
 void DomainDecomposition::initialize(int num_particles, double domain_size) {
@@ -270,7 +275,14 @@ void DomainDecomposition::redistribute(std::vector<Particle> &local_particles) {
       staying.push_back(p);
     } else {
       int owner = get_owner_rank(p.position);
-      send_buffers[owner].push_back(p);
+      if (owner == rank_) {
+        // Particle is outside our bounds but clamping assigns it to us
+        // Keep it to avoiding sending to self (which causes data
+        // loss/corruption)
+        staying.push_back(p);
+      } else {
+        send_buffers[owner].push_back(p);
+      }
     }
   }
 

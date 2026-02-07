@@ -179,9 +179,14 @@ Octree::compute_bounding_box(const std::vector<Particle> &particles) const {
   }
 
   // Make it a cube (octree requires cubic cells)
-  double size = std::max(
+  double max_dim = std::max(
       {max_pos.x - min_pos.x, max_pos.y - min_pos.y, max_pos.z - min_pos.z});
-  size *= 1.01; // Small margin
+
+  // Ensure non-zero size to prevent division by zero or infinite recursion
+  if (max_dim < 1e-9)
+    max_dim = 1.0;
+
+  double size = max_dim * 1.01; // Small margin
 
   Vector3D center = (min_pos + max_pos) * 0.5;
   Vector3D half_size(size * 0.5, size * 0.5, size * 0.5);

@@ -70,6 +70,7 @@ private:
   DomainDecomposition domain_;
   std::vector<Particle> local_particles_;
   std::vector<Particle> halo_particles_;
+  std::vector<Particle> all_local_particles_; // Combined local + halo for tree
   Octree local_tree_;
 
   long long interaction_count_;

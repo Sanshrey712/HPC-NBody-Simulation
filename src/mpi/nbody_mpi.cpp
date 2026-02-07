@@ -24,16 +24,18 @@ void NBodyMPI::build_local_tree() {
   domain_.exchange_halo(local_particles_, halo_particles_, halo_width_);
 
   // Combine local and halo particles for tree building
-  std::vector<Particle> all_local;
-  all_local.reserve(local_particles_.size() + halo_particles_.size());
-  all_local.insert(all_local.end(), local_particles_.begin(),
-                   local_particles_.end());
-  all_local.insert(all_local.end(), halo_particles_.begin(),
-                   halo_particles_.end());
+  // Combine local and halo particles for tree building
+  all_local_particles_.clear();
+  all_local_particles_.reserve(local_particles_.size() +
+                               halo_particles_.size());
+  all_local_particles_.insert(all_local_particles_.end(),
+                              local_particles_.begin(), local_particles_.end());
+  all_local_particles_.insert(all_local_particles_.end(),
+                              halo_particles_.begin(), halo_particles_.end());
 
   // Build tree
-  if (!all_local.empty()) {
-    local_tree_.build(all_local);
+  if (!all_local_particles_.empty()) {
+    local_tree_.build(all_local_particles_);
   }
 }
 
