@@ -10,17 +10,37 @@ High-performance N-body gravitational simulation using OpenMP, MPI, and CUDA wit
 - **CUDA**: GPU acceleration with shared memory tiling
 - **Profiling**: gprof, gcov, LIKWID integration
 
+## Performance Reports
+
+Comprehensive performance analysis reports are available:
+- **[OpenMP Report](OpenMP_REPORT.pdf)**: Analysis of shared-memory performance (Direct vs. Barnes-Hut).
+- **[MPI Report](MPI_Report.pdf)**: Analysis of distributed-memory performance on multi-node systems.
+
 ## Quick Start
 
+### Build
 ```bash
-# Build
 ./scripts/build.sh Release
+```
 
-# Run simulation
-./build/nbody --particles 10000 --steps 100 --mode openmp --threads 4 --barnes-hut
+### Run Simulation
 
-# See all options
-./build/nbody --help
+**OpenMP (Shared Memory)**
+```bash
+# Barnes-Hut (O(N log N))
+./build/nbody --particles 100000 --steps 100 --mode openmp --threads 4 --barnes-hut
+
+# Direct Method (O(N^2))
+./build/nbody --particles 10000 --steps 100 --mode openmp --threads 4 --direct
+```
+
+**MPI (Distributed Memory)**
+```bash
+# Barnes-Hut (O(N log N)) - Recommended for large N
+mpirun -np 4 ./build/nbody --particles 10000 --steps 100 --mode mpi --barnes-hut
+
+# Direct Method (O(N^2))
+mpirun -np 4 ./build/nbody --particles 10000 --steps 100 --mode mpi --direct
 ```
 
 ## Build Options
@@ -33,7 +53,7 @@ High-performance N-body gravitational simulation using OpenMP, MPI, and CUDA wit
 ./scripts/build.sh likwid        # LIKWID counters
 ```
 
-## Profiling
+## Profiling & Analysis
 
 ### gprof (Function Profiling)
 ```bash
@@ -53,13 +73,7 @@ High-performance N-body gravitational simulation using OpenMP, MPI, and CUDA wit
 # Groups: FLOPS_DP, MEM, L2CACHE, L3CACHE, BRANCH, CPI
 ```
 
-### Scaling Experiments
-```bash
-./scripts/run_scaling.sh 8 100000
-# Output: results/strong_scaling*.csv, results/weak_scaling*.csv
-```
-
-## Command Line Options
+## command Line Options
 
 | Option | Description |
 |--------|-------------|
@@ -67,29 +81,21 @@ High-performance N-body gravitational simulation using OpenMP, MPI, and CUDA wit
 | `-s, --steps N` | Timesteps |
 | `--mode MODE` | serial, openmp, mpi, cuda |
 | `-t, --threads N` | OpenMP threads |
-| `--theta T` | Barnes-Hut opening angle |
+| `--theta T` | Barnes-Hut opening angle (default: 0.5) |
 | `--direct` | Use O(N²) method |
 | `--barnes-hut` | Use O(N log N) method |
 
-## Requirements
-
-- CMake 3.18+
-- C++17 compiler (GCC 9+, Clang 10+)
-- OpenMP (optional)
-- MPI (optional, OpenMPI recommended)
-- CUDA Toolkit 11+ (optional)
-- LIKWID (optional)
-
 ## Project Structure
-
 ```
 ├── src/
-│   ├── common/      # Data structures
-│   ├── serial/      # Serial implementations
-│   ├── openmp/      # OpenMP parallel
-│   ├── mpi/         # MPI distributed
-│   └── cuda/        # CUDA GPU
-├── scripts/         # Profiling scripts
-├── tests/           # Validation tests
-└── profiling/       # Profiling output
+│   ├── common/      # Data structures (Particle, Vector3D)
+│   ├── serial/      # Serial logic & Octree implementation
+│   ├── openmp/      # OpenMP implementation
+│   ├── mpi/         # MPI implementation (Domain Decomposition)
+│   ├── cuda/        # CUDA GPU implementation
+│   └── assets/      # Visualization & Report assets
+├── scripts/         # Build and profiling scripts
+├── profiling/       # Profiling output
+├── OpenMP_REPORT.pdf
+└── MPI_Report.pdf
 ```
