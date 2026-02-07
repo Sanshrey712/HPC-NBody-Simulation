@@ -1,4 +1,3 @@
-# Parallel N-Body Simulation with Barnes-Hut Optimization
 
 # Parallel N-Body Simulation with Barnes-Hut Optimization
 
@@ -155,5 +154,5 @@ Measures hardware metrics like FLOPS, Cache Misses, and Memory Bandwidth.
 ## Author
 
 **Sanshrey**\
-Roll No.: CS23B2014\
-Department of Computer Science and Engineering
+
+
