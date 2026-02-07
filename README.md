@@ -138,3 +138,22 @@ Measures hardware metrics like FLOPS, Cache Misses, and Memory Bandwidth.
 ├── OpenMP_REPORT.pdf # Detailed OpenMP Performance Analysis
 └── MPI_Report.pdf    # Detailed MPI Performance Analysis
 ```
+
+## Key Takeaways
+
+1.  **Algorithmic Superiority**: The **Barnes-Hut algorithm ($O(N \log N)$)** is essential for large-scale N-Body simulations, providing order-of-magnitude speedups over the Direct method ($O(N^2)$) once $N > 10,000$.
+2.  **Parallel Scaling**:
+    -   **OpenMP** effectively utilizes shared memory for simpler implementation and good performance on a single node.
+    -   **MPI** successfully scales the problem across distributed memory, enabling the simulation of much larger systems than possible on a single machine.
+3.  **Optimization Trade-offs**: While Barnes-Hut is faster, it introduces complexity in memory access (pointer chasing) and parallel load balancing (irregular tree structure), which must be carefully managed.
+
+## References
+
+1.  J. Barnes and P. Hut, "A hierarchical O(N log N) force-calculation algorithm," *Nature*, vol. 324, no. 4, pp. 446-449, 1986.
+2.  L. Greengard and V. Rokhlin, "A fast algorithm for particle simulations," *Journal of Computational Physics*, vol. 73, no. 2, pp. 325-348, 1987.
+
+## Author
+
+**Sanshrey**\
+Roll No.: CS23B2014\
+Department of Computer Science and Engineering
