@@ -1,19 +1,30 @@
 # Parallel N-Body Simulation with Barnes-Hut Optimization
 
-High-performance N-body gravitational simulation implementing **Direct ($O(N^2)$)** and **Barnes-Hut ($O(N \log N)$)** algorithms. The project leverages **OpenMP** for shared-memory parallelism, **MPI** for distributed-memory systems, and **CUDA** for GPU acceleration.
+# Parallel N-Body Simulation with Barnes-Hut Optimization
 
-![Barnes-Hut Visualization](src/assets/BarnesHut_MPI.png)
+## Introduction
+
+The N-Body problem is a classic problem in physics and computer science that involves simulating the motion of a system of particles under the influence of physical forces, such as gravity. For a system of $N$ particles, a direct brute-force approach requires computing $O(N^2)$ interactions per time step, which becomes computationally prohibitive as $N$ grows.
+
+This project implements a high-performance N-Body simulation to explore and compare different parallel computing paradigms. It features two core algorithms:
+1.  **Direct Method ($O(N^2)$)**: Computes exact forces between all particle pairs. Highly accurate but computationally expensive.
+2.  **Barnes-Hut Algorithm ($O(N \log N)$)**: Uses an Octree spatial data structure to approximate forces from distant particles, significantly reducing computational complexity for large datasets.
+
+The simulation is implemented using three major parallel programming models:
+-   **OpenMP**: Shared-memory parallelization for multi-core CPUs.
+-   **MPI**: Distributed-memory parallelization for clusters and multi-node systems, employing domain decomposition and halo exchange.
+-   **CUDA**: Massively parallel acceleration on NVIDIA GPUs.
+
+This codebase serves as a comprehensive benchmark for analyzing the trade-offs between accuracy, speed, and implementation complexity across these different architectures.
 
 ## Features
 
-- **Algorithms**:
-    - **Direct Method**: Brute-force calculation of all particle pairs. $O(N^2)$ complexity. Accurate but slow for large $N$.
-    - **Barnes-Hut**: Tree-based approximation using an Octree. $O(N \log N)$ complexity. Significant speedup for large datasets ($N > 10,000$).
-- **Parallel Implementations**:
-    - **OpenMP**: Multi-threaded execution with dynamic scheduling to handle load usage.
-    - **MPI**: Domain decomposition with halo exchange for multi-node clusters.
-    - **CUDA**: Extremely fast GPU implementation using shared memory tiling.
-- **Profiling**: Integrated support for `gprof`, `gcov`, and `LIKWID` hardware counters.
+- **Scalable Algorithms**: Implements both Direct and Barnes-Hut methods to handle small to large-scale simulations.
+- **Multi-Paradigm Support**:
+    - **OpenMP**: Dynamic scheduling to effectively load-balance the irregular tree traversal of Barnes-Hut.
+    - **MPI**: Robust domain decomposition handling particle migration and boundary data exchange.
+    - **CUDA**: Optimized kernels using shared memory tiling to maximize GPU throughput.
+- **Comprehensive Profiling**: Integrated support for `gprof`, `gcov`, and `LIKWID` to analyze CPU usage, code coverage, and hardware performance counters (FLOPS, cache hits).
 
 ## Performance Results
 
