@@ -153,6 +153,6 @@ Measures hardware metrics like FLOPS, Cache Misses, and Memory Bandwidth.
 
 ## Author
 
-**Sanshrey**\
+**Sanshrey**
 
 
